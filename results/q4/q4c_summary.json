@@ -1,0 +1,183 @@
+{
+  "method": "minibatch-kmeans",
+  "method_candidates_val_silhouette": {
+    "minibatch-kmeans": 0.0015134980203583837,
+    "kmeans": -0.03038492612540722,
+    "gmm-diag": -0.1394021362066269
+  },
+  "k_candidates": [
+    10,
+    20
+  ],
+  "val_silhouette": {
+    "10": 0.0015134980203583837,
+    "20": -0.013521325774490833
+  },
+  "k_chosen_by_validation": 10,
+  "test_ARI": 0.04106874033130037,
+  "test_NMI": 0.06731882025227712,
+  "test_AMI": 0.06633775312682844,
+  "test_cluster_purity": 0.1889,
+  "contingency_clusters_x_classes": [
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      748,
+      315,
+      291,
+      205,
+      154,
+      201,
+      123,
+      308,
+      667,
+      451
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      27,
+      59,
+      79,
+      192,
+      59,
+      247,
+      107,
+      70,
+      64,
+      29
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      71,
+      265,
+      166,
+      207,
+      188,
+      148,
+      250,
+      220,
+      125,
+      287
+    ],
+    [
+      150,
+      359,
+      464,
+      396,
+      599,
+      404,
+      520,
+      402,
+      136,
+      232
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      4,
+      2,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      8,
+      1
+    ]
+  ],
+  "cluster_to_class_map": [
+    "airplane",
+    "airplane",
+    "airplane",
+    "dog",
+    "airplane",
+    "airplane",
+    "truck",
+    "deer",
+    "airplane",
+    "ship"
+  ],
+  "test_acc_after_majority_mapping": 0.1889,
+  "per_class_recall_clustering": {
+    "airplane": 0.748,
+    "automobile": 0.0,
+    "bird": 0.0,
+    "cat": 0.0,
+    "deer": 0.599,
+    "dog": 0.247,
+    "frog": 0.0,
+    "horse": 0.0,
+    "ship": 0.008,
+    "truck": 0.287
+  },
+  "svm_test_acc": 0.5029,
+  "per_class_recall_svm": {
+    "airplane": 0.574,
+    "automobile": 0.63,
+    "bird": 0.386,
+    "cat": 0.368,
+    "deer": 0.399,
+    "dog": 0.382,
+    "frog": 0.547,
+    "horse": 0.54,
+    "ship": 0.635,
+    "truck": 0.568
+  },
+  "train_size": 45000,
+  "test_size": 10000
+}

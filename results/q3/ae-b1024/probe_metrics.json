@@ -1,0 +1,8 @@
+{
+  "bottleneck": 1024,
+  "frozen_encoder": true,
+  "probe_epochs": 30,
+  "probe_lr": 0.001,
+  "probe_val_acc": 0.462799996137619,
+  "probe_test_acc_clean": 0.4747
+}

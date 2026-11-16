@@ -1,0 +1,43 @@
+{
+  "ae-b1024": {
+    "bottleneck": 1024,
+    "frozen_encoder": true,
+    "probe_epochs": 30,
+    "probe_lr": 0.001,
+    "probe_val_acc": 0.462799996137619,
+    "probe_test_acc_clean": 0.4747,
+    "val_mse": 0.001504361429437995,
+    "test_mse": 0.001508545713685453
+  },
+  "ae-b256": {
+    "bottleneck": 256,
+    "frozen_encoder": true,
+    "probe_epochs": 30,
+    "probe_lr": 0.001,
+    "probe_val_acc": 0.41440001130104065,
+    "probe_test_acc_clean": 0.4166,
+    "val_mse": 0.002615267616137862,
+    "test_mse": 0.0026139749981462955
+  },
+  "ae-b32": {
+    "bottleneck": 32,
+    "frozen_encoder": true,
+    "probe_epochs": 30,
+    "probe_lr": 0.001,
+    "probe_val_acc": 0.3612000048160553,
+    "probe_test_acc_clean": 0.3726,
+    "val_mse": 0.011399003253877164,
+    "test_mse": 0.01147819901406765
+  },
+  "dae-b1024": {
+    "bottleneck": 1024,
+    "frozen_encoder": true,
+    "probe_epochs": 30,
+    "probe_lr": 0.001,
+    "probe_val_acc": 0.5023999810218811,
+    "probe_test_acc_clean": 0.5147,
+    "probe_test_acc_noisy": 0.4425,
+    "val_mse": 0.005406143590807915,
+    "test_mse": 0.005408740267902613
+  }
+}

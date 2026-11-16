@@ -1,0 +1,62 @@
+{
+  "mlp-base": {
+    "name": "mlp-base",
+    "config": {
+      "hidden": [
+        1024,
+        512
+      ],
+      "dropout": 0.0,
+      "weight_decay": 0.0
+    },
+    "params": 3676682,
+    "epochs": 40,
+    "batch_size": 256,
+    "lr": 0.001,
+    "best_epoch": 36,
+    "best_val_acc": 0.5274,
+    "test_loss": 3.8851608787536622,
+    "test_acc": 0.5342,
+    "train_seconds": 106.7
+  },
+  "mlp-reg": {
+    "name": "mlp-reg",
+    "config": {
+      "hidden": [
+        1024,
+        512
+      ],
+      "dropout": 0.3,
+      "weight_decay": 0.0001
+    },
+    "params": 3676682,
+    "epochs": 40,
+    "batch_size": 256,
+    "lr": 0.001,
+    "best_epoch": 35,
+    "best_val_acc": 0.5366,
+    "test_loss": 1.3728877054214477,
+    "test_acc": 0.5403,
+    "train_seconds": 108.6
+  },
+  "mlp-small": {
+    "name": "mlp-small",
+    "config": {
+      "hidden": [
+        256,
+        128
+      ],
+      "dropout": 0.0,
+      "weight_decay": 0.0
+    },
+    "params": 820874,
+    "epochs": 40,
+    "batch_size": 256,
+    "lr": 0.001,
+    "best_epoch": 7,
+    "best_val_acc": 0.5232,
+    "test_loss": 1.3987491582870484,
+    "test_acc": 0.5186,
+    "train_seconds": 51.3
+  }
+}

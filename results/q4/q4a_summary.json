@@ -1,0 +1,165 @@
+{
+  "representation": {
+    "representation": "frozen bottleneck features of ae-b1024",
+    "bottleneck": 1024,
+    "subset_size": 9000,
+    "subset_seed": 260004,
+    "subset_file": "results/q4/svm_subset_seed260004.npz"
+  },
+  "sweep": [
+    {
+      "kernel": "linear",
+      "C": 0.01,
+      "train_acc": 0.6759,
+      "val_acc": 0.4106,
+      "n_support_vectors": 7815,
+      "sv_fraction": 0.8683,
+      "fit_seconds": 13.6
+    },
+    {
+      "kernel": "linear",
+      "C": 0.1,
+      "train_acc": 0.7946,
+      "val_acc": 0.3864,
+      "n_support_vectors": 7546,
+      "sv_fraction": 0.8384,
+      "fit_seconds": 26.2
+    },
+    {
+      "kernel": "linear",
+      "C": 1.0,
+      "train_acc": 0.8951,
+      "val_acc": 0.3682,
+      "n_support_vectors": 7402,
+      "sv_fraction": 0.8224,
+      "fit_seconds": 95.3
+    },
+    {
+      "kernel": "linear",
+      "C": 10.0,
+      "train_acc": 0.9664,
+      "val_acc": 0.3662,
+      "n_support_vectors": 7361,
+      "sv_fraction": 0.8179,
+      "fit_seconds": 413.4
+    },
+    {
+      "kernel": "linear",
+      "C": 100.0,
+      "train_acc": 0.9974,
+      "val_acc": 0.3672,
+      "n_support_vectors": 7312,
+      "sv_fraction": 0.8124,
+      "fit_seconds": 3743.9
+    },
+    {
+      "kernel": "poly",
+      "C": 0.01,
+      "train_acc": 0.11533333333333333,
+      "val_acc": 0.1008,
+      "n_support_vectors": 9000,
+      "sv_fraction": 1.0,
+      "fit_seconds": 352.8
+    },
+    {
+      "kernel": "poly",
+      "C": 0.1,
+      "train_acc": 0.3012222222222222,
+      "val_acc": 0.1536,
+      "n_support_vectors": 8998,
+      "sv_fraction": 0.9997777777777778,
+      "fit_seconds": 352.9
+    },
+    {
+      "kernel": "poly",
+      "C": 1.0,
+      "train_acc": 0.7705555555555555,
+      "val_acc": 0.2808,
+      "n_support_vectors": 8910,
+      "sv_fraction": 0.99,
+      "fit_seconds": 340.4
+    },
+    {
+      "kernel": "poly",
+      "C": 10.0,
+      "train_acc": 0.9802222222222222,
+      "val_acc": 0.3616,
+      "n_support_vectors": 8825,
+      "sv_fraction": 0.9805555555555555,
+      "fit_seconds": 343.4
+    },
+    {
+      "kernel": "poly",
+      "C": 100.0,
+      "train_acc": 0.9995555555555555,
+      "val_acc": 0.3692,
+      "n_support_vectors": 8812,
+      "sv_fraction": 0.9791111111111112,
+      "fit_seconds": 348.1
+    },
+    {
+      "kernel": "rbf",
+      "C": 0.01,
+      "train_acc": 0.3061,
+      "val_acc": 0.2786,
+      "n_support_vectors": 9000,
+      "sv_fraction": 1.0,
+      "fit_seconds": 36.9
+    },
+    {
+      "kernel": "rbf",
+      "C": 0.1,
+      "train_acc": 0.43966666666666665,
+      "val_acc": 0.3696,
+      "n_support_vectors": 8950,
+      "sv_fraction": 0.9944444444444445,
+      "fit_seconds": 308.0
+    },
+    {
+      "kernel": "rbf",
+      "C": 1.0,
+      "train_acc": 0.8663333333333333,
+      "val_acc": 0.4904,
+      "n_support_vectors": 8700,
+      "sv_fraction": 0.9666666666666667,
+      "fit_seconds": 257.6
+    },
+    {
+      "kernel": "rbf",
+      "C": 10.0,
+      "train_acc": 0.9992222222222222,
+      "val_acc": 0.505,
+      "n_support_vectors": 8779,
+      "sv_fraction": 0.9754444444444444,
+      "fit_seconds": 327.9
+    },
+    {
+      "kernel": "rbf",
+      "C": 100.0,
+      "train_acc": 1.0,
+      "val_acc": 0.5,
+      "n_support_vectors": 8769,
+      "sv_fraction": 0.9743333333333334,
+      "fit_seconds": 327.0
+    }
+  ],
+  "selection_rule": "highest validation accuracy; ties -> lower C, then lower SV fraction",
+  "selected": {
+    "kernel": "rbf",
+    "C": 10.0,
+    "train_acc": 0.9992222222222222,
+    "val_acc": 0.505,
+    "n_support_vectors": 8779,
+    "sv_fraction": 0.9754444444444444,
+    "fit_seconds": 327.9
+  },
+  "final": {
+    "kernel": "rbf",
+    "C": 10.0,
+    "train_acc": 0.9992222222222222,
+    "val_acc": 0.505,
+    "test_acc": 0.5029,
+    "n_support_vectors": 8779,
+    "sv_fraction": 0.9754444444444444
+  }
+}

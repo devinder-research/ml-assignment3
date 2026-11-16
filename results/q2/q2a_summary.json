@@ -1,0 +1,26 @@
+{
+  "q2-mlp": {
+    "name": "q2-mlp",
+    "params": 1707274,
+    "epochs": 40,
+    "batch_size": 256,
+    "lr": 0.001,
+    "best_epoch": 23,
+    "best_val_acc": 0.5262,
+    "test_loss": 2.7401383628845215,
+    "test_acc": 0.5312,
+    "train_seconds": 79.9
+  },
+  "q2-cnn": {
+    "name": "q2-cnn",
+    "params": 1439818,
+    "epochs": 40,
+    "batch_size": 256,
+    "lr": 0.001,
+    "best_epoch": 6,
+    "best_val_acc": 0.7038,
+    "test_loss": 0.8941622391700744,
+    "test_acc": 0.7063,
+    "train_seconds": 400.7
+  }
+}

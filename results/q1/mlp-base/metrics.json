@@ -1,0 +1,20 @@
+{
+  "name": "mlp-base",
+  "config": {
+    "hidden": [
+      1024,
+      512
+    ],
+    "dropout": 0.0,
+    "weight_decay": 0.0
+  },
+  "params": 3676682,
+  "epochs": 40,
+  "batch_size": 256,
+  "lr": 0.001,
+  "best_epoch": 36,
+  "best_val_acc": 0.5274,
+  "test_loss": 3.8851608787536622,
+  "test_acc": 0.5342,
+  "train_seconds": 106.7
+}

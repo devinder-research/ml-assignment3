@@ -1,0 +1,32 @@
+{
+  "ae-b32": {
+    "bottleneck": 32,
+    "params": 391875,
+    "epochs": 40,
+    "batch_size": 128,
+    "lr": 0.001,
+    "best_epoch": 35,
+    "val_mse": 0.011399003253877164,
+    "test_mse": 0.01147819901406765
+  },
+  "ae-b256": {
+    "bottleneck": 256,
+    "params": 1309603,
+    "epochs": 40,
+    "batch_size": 128,
+    "lr": 0.001,
+    "best_epoch": 40,
+    "val_mse": 0.002615267616137862,
+    "test_mse": 0.0026139749981462955
+  },
+  "ae-b1024": {
+    "bottleneck": 1024,
+    "params": 4456099,
+    "epochs": 40,
+    "batch_size": 128,
+    "lr": 0.001,
+    "best_epoch": 40,
+    "val_mse": 0.001504361429437995,
+    "test_mse": 0.001508545713685453
+  }
+}

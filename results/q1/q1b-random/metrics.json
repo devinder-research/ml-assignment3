@@ -1,0 +1,13 @@
+{
+  "name": "q1b-random",
+  "params": 3676682,
+  "epochs": 400,
+  "batch_size": 256,
+  "lr": 0.001,
+  "optimizer": "Adam",
+  "best_epoch": 4,
+  "best_val_acc": 0.1132,
+  "test_loss": 2.3057824409484864,
+  "test_acc": 0.1177,
+  "train_seconds": 974.6
+}

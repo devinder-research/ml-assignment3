@@ -1,0 +1,20 @@
+{
+  "name": "mlp-small",
+  "config": {
+    "hidden": [
+      256,
+      128
+    ],
+    "dropout": 0.0,
+    "weight_decay": 0.0
+  },
+  "params": 820874,
+  "epochs": 40,
+  "batch_size": 256,
+  "lr": 0.001,
+  "best_epoch": 7,
+  "best_val_acc": 0.5232,
+  "test_loss": 1.3987491582870484,
+  "test_acc": 0.5186,
+  "train_seconds": 51.3
+}

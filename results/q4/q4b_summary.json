@@ -1,0 +1,541 @@
+{
+  "test_acc": 0.5029,
+  "confusion": [
+    [
+      574,
+      48,
+      64,
+      34,
+      20,
+      21,
+      19,
+      32,
+      128,
+      60
+    ],
+    [
+      36,
+      630,
+      11,
+      32,
+      4,
+      11,
+      14,
+      33,
+      41,
+      188
+    ],
+    [
+      69,
+      33,
+      386,
+      98,
+      121,
+      90,
+      76,
+      71,
+      21,
+      35
+    ],
+    [
+      44,
+      61,
+      96,
+      368,
+      54,
+      183,
+      89,
+      41,
+      14,
+      50
+    ],
+    [
+      47,
+      22,
+      144,
+      89,
+      399,
+      73,
+      102,
+      87,
+      16,
+      21
+    ],
+    [
+      22,
+      22,
+      90,
+      240,
+      69,
+      382,
+      51,
+      64,
+      26,
+      34
+    ],
+    [
+      13,
+      33,
+      96,
+      110,
+      70,
+      56,
+      547,
+      28,
+      12,
+      35
+    ],
+    [
+      32,
+      40,
+      39,
+      95,
+      67,
+      83,
+      24,
+      540,
+      14,
+      66
+    ],
+    [
+      123,
+      76,
+      16,
+      26,
+      17,
+      28,
+      6,
+      13,
+      635,
+      60
+    ],
+    [
+      47,
+      204,
+      15,
+      38,
+      12,
+      11,
+      19,
+      42,
+      44,
+      568
+    ]
+  ],
+  "sv_per_class": [
+    846,
+    888,
+    894,
+    900,
+    887,
+    895,
+    877,
+    881,
+    814,
+    897
+  ],
+  "pairs": [
+    {
+      "pair": [
+        "cat",
+        "dog"
+      ],
+      "pair_indices": [
+        3,
+        5
+      ],
+      "confusion_mass_test": 423,
+      "cm_ij": 183,
+      "cm_ji": 240,
+      "near_boundary_test_errors": 5,
+      "near_boundary_test_n": 6,
+      "pair_error_rate_test": 0.625,
+      "overall_error_rate_test": 0.4971,
+      "centroid_distance": 3.410896062850952,
+      "within_class_radius": [
+        33.422218322753906,
+        32.878692626953125
+      ],
+      "test_examples": [
+        {
+          "index": 1178,
+          "true": "frog",
+          "pred": "dog",
+          "d_pair": -2.389502213873129e-07,
+          "f_i": 8.284444062129127,
+          "f_j": 8.284444301079349,
+          "kind": "test-near-boundary"
+        },
+        {
+          "index": 8634,
+          "true": "frog",
+          "pred": "bird",
+          "d_pair": -6.592946150263401e-05,
+          "f_i": 8.289701299049081,
+          "f_j": 8.289767228510584,
+          "kind": "test-near-boundary"
+        },
+        {
+          "index": 9354,
+          "true": "airplane",
+          "pred": "airplane",
+          "d_pair": 7.852423353638116e-05,
+          "f_i": 3.8265797356093674,
+          "f_j": 3.826501211375831,
+          "kind": "test-near-boundary"
+        },
+        {
+          "index": 3789,
+          "true": "truck",
+          "pred": "cat",
+          "d_pair": 0.00015841562080964877,
+          "f_i": 8.28835683632942,
+          "f_j": 8.28819842070861,
+          "kind": "test-near-boundary"
+        },
+        {
+          "index": 3808,
+          "true": "dog",
+          "pred": "cat",
+          "d_pair": 0.00017182161016471298,
+          "f_i": 8.290033267400721,
+          "f_j": 8.289861445790557,
+          "kind": "test-near-boundary"
+        },
+        {
+          "index": 2719,
+          "true": "deer",
+          "pred": "bird",
+          "d_pair": 0.00023679349962257845,
+          "f_i": 8.294103840011932,
+          "f_j": 8.29386704651231,
+          "kind": "test-near-boundary"
+        }
+      ],
+      "train_support_vectors": [
+        {
+          "index": 5371,
+          "true": "frog",
+          "pred": "frog",
+          "d_pair": 1.6577730875155794e-05,
+          "f_i": 6.230737063887778,
+          "f_j": 6.230720486156903,
+          "kind": "train-support-vector-near-boundary"
+        },
+        {
+          "index": 466,
+          "true": "ship",
+          "pred": "ship",
+          "d_pair": -5.372789753477214e-05,
+          "f_i": 1.7136416835079904,
+          "f_j": 1.7136954114055252,
+          "kind": "train-support-vector-near-boundary"
+        },
+        {
+          "index": 6791,
+          "true": "horse",
+          "pred": "horse",
+          "d_pair": 0.00010148606633997304,
+          "f_i": 7.225846992260999,
+          "f_j": 7.225745506194659,
+          "kind": "train-support-vector-near-boundary"
+        },
+        {
+          "index": 3013,
+          "true": "airplane",
+          "pred": "airplane",
+          "d_pair": 0.0001278118773377912,
+          "f_i": 1.7249854721084867,
+          "f_j": 1.724857660231149,
+          "kind": "train-support-vector-near-boundary"
+        },
+        {
+          "index": 2052,
+          "true": "bird",
+          "pred": "bird",
+          "d_pair": 0.00015410207940558251,
+          "f_i": 7.295039731454961,
+          "f_j": 7.294885629375555,
+          "kind": "train-support-vector-near-boundary"
+        },
+        {
+          "index": 2027,
+          "true": "bird",
+          "pred": "bird",
+          "d_pair": -0.00015519768299254721,
+          "f_i": 2.762916275946539,
+          "f_j": 2.7630714736295316,
+          "kind": "train-support-vector-near-boundary"
+        }
+      ]
+    },
+    {
+      "pair": [
+        "automobile",
+        "truck"
+      ],
+      "pair_indices": [
+        1,
+        9
+      ],
+      "confusion_mass_test": 392,
+      "cm_ij": 188,
+      "cm_ji": 204,
+      "near_boundary_test_errors": 5,
+      "near_boundary_test_n": 6,
+      "pair_error_rate_test": 0.401,
+      "overall_error_rate_test": 0.4971,
+      "centroid_distance": 5.378575325012207,
+      "within_class_radius": [
+        35.721046447753906,
+        35.195194244384766
+      ],
+      "test_examples": [
+        {
+          "index": 4937,
+          "true": "airplane",
+          "pred": "automobile",
+          "d_pair": 6.634984651476827e-05,
+          "f_i": 8.279426090874786,
+          "f_j": 8.279359741028271,
+          "kind": "test-near-boundary"
+        },
+        {
+          "index": 3658,
+          "true": "bird",
+          "pred": "deer",
+          "d_pair": -0.00014626561576225328,
+          "f_i": 5.007795945190524,
+          "f_j": 5.007942210806286,
+          "kind": "test-near-boundary"
+        },
+        {
+          "index": 6108,
+          "true": "deer",
+          "pred": "bird",
+          "d_pair": 0.0002590549841059442,
+          "f_i": 0.6873990606063896,
+          "f_j": 0.6871400056222836,
+          "kind": "test-near-boundary"
+        },
+        {
+          "index": 6285,
+          "true": "ship",
+          "pred": "airplane",
+          "d_pair": 0.0002798373229186968,
+          "f_i": 0.7065028626946559,
+          "f_j": 0.7062230253717372,
+          "kind": "test-near-boundary"
+        },
+        {
+          "index": 8588,
+          "true": "frog",
+          "pred": "deer",
+          "d_pair": 0.0003904388170958839,
+          "f_i": 1.7147845155766004,
+          "f_j": 1.7143940767595045,
+          "kind": "test-near-boundary"
+        },
+        {
+          "index": 4116,
+          "true": "bird",
+          "pred": "bird",
+          "d_pair": -0.00040368608710583676,
+          "f_i": 0.7028473386231427,
+          "f_j": 0.7032510247102486,
+          "kind": "test-near-boundary"
+        }
+      ],
+      "train_support_vectors": [
+        {
+          "index": 8222,
+          "true": "deer",
+          "pred": "deer",
+          "d_pair": 2.3989230836685138e-05,
+          "f_i": 0.693215433260337,
+          "f_j": 0.6931914440295003,
+          "kind": "train-support-vector-near-boundary"
+        },
+        {
+          "index": 8054,
+          "true": "bird",
+          "pred": "bird",
+          "d_pair": -5.178703349961733e-05,
+          "f_i": 0.7365230161514564,
+          "f_j": 0.736574803184956,
+          "kind": "train-support-vector-near-boundary"
+        },
+        {
+          "index": 5385,
+          "true": "dog",
+          "pred": "dog",
+          "d_pair": -6.239047966871691e-05,
+          "f_i": 0.70858363072319,
+          "f_j": 0.7086460212028587,
+          "kind": "train-support-vector-near-boundary"
+        },
+        {
+          "index": 335,
+          "true": "horse",
+          "pred": "horse",
+          "d_pair": 9.434980205380583e-05,
+          "f_i": 2.7913435697949622,
+          "f_j": 2.7912492199929084,
+          "kind": "train-support-vector-near-boundary"
+        },
+        {
+          "index": 3014,
+          "true": "deer",
+          "pred": "deer",
+          "d_pair": 0.00010114949077877355,
+          "f_i": 0.7137767829485564,
+          "f_j": 0.7136756334577776,
+          "kind": "train-support-vector-near-boundary"
+        },
+        {
+          "index": 7059,
+          "true": "dog",
+          "pred": "dog",
+          "d_pair": -0.00013111591489245455,
+          "f_i": 7.155374567072491,
+          "f_j": 7.155505682987384,
+          "kind": "train-support-vector-near-boundary"
+        }
+      ]
+    },
+    {
+      "pair": [
+        "bird",
+        "deer"
+      ],
+      "pair_indices": [
+        2,
+        4
+      ],
+      "confusion_mass_test": 265,
+      "cm_ij": 121,
+      "cm_ji": 144,
+      "near_boundary_test_errors": 4,
+      "near_boundary_test_n": 6,
+      "pair_error_rate_test": 0.6075,
+      "overall_error_rate_test": 0.4971,
+      "centroid_distance": 2.678632974624634,
+      "within_class_radius": [
+        29.28099822998047,
+        27.09600257873535
+      ],
+      "test_examples": [
+        {
+          "index": 2040,
+          "true": "airplane",
+          "pred": "ship",
+          "d_pair": 1.2069561345029456e-05,
+          "f_i": 3.751095143316578,
+          "f_j": 3.751083073755233,
+          "kind": "test-near-boundary"
+        },
+        {
+          "index": 6062,
+          "true": "cat",
+          "pred": "bird",
+          "d_pair": 6.0251013296763745e-05,
+          "f_i": 8.27333145343376,
+          "f_j": 8.273271202420464,
+          "kind": "test-near-boundary"
+        },
+        {
+          "index": 5578,
+          "true": "cat",
+          "pred": "deer",
+          "d_pair": -7.927669401119886e-05,
+          "f_i": 8.251027397010493,
+          "f_j": 8.251106673704504,
+          "kind": "test-near-boundary"
+        },
+        {
+          "index": 6817,
+          "true": "automobile",
+          "pred": "automobile",
+          "d_pair": 0.00010320355783743906,
+          "f_i": 0.7334238954035135,
+          "f_j": 0.733320691845676,
+          "kind": "test-near-boundary"
+        },
+        {
+          "index": 8995,
+          "true": "truck",
+          "pred": "truck",
+          "d_pair": -0.00013430960185445429,
+          "f_i": 2.749876732408806,
+          "f_j": 2.7500110420106605,
+          "kind": "test-near-boundary"
+        },
+        {
+          "index": 7637,
+          "true": "ship",
+          "pred": "automobile",
+          "d_pair": -0.0001887630741477242,
+          "f_i": 1.7620729771226282,
+          "f_j": 1.762261740196776,
+          "kind": "test-near-boundary"
+        }
+      ],
+      "train_support_vectors": [
+        {
+          "index": 4550,
+          "true": "cat",
+          "pred": "cat",
+          "d_pair": 3.131815907186919e-05,
+          "f_i": 3.7770649344870475,
+          "f_j": 3.7770336163279756,
+          "kind": "train-support-vector-near-boundary"
+        },
+        {
+          "index": 5783,
+          "true": "frog",
+          "pred": "frog",
+          "d_pair": -0.00033657376858808874,
+          "f_i": 6.224388265407006,
+          "f_j": 6.224724839175594,
+          "kind": "train-support-vector-near-boundary"
+        },
+        {
+          "index": 6856,
+          "true": "frog",
+          "pred": "frog",
+          "d_pair": -0.0007173701007952005,
+          "f_i": 7.281404207286693,
+          "f_j": 7.282121577387488,
+          "kind": "train-support-vector-near-boundary"
+        },
+        {
+          "index": 5234,
+          "true": "ship",
+          "pred": "ship",
+          "d_pair": -0.0007272203878216921,
+          "f_i": 3.765028888869883,
+          "f_j": 3.7657561092577048,
+          "kind": "train-support-vector-near-boundary"
+        },
+        {
+          "index": 6185,
+          "true": "cat",
+          "pred": "cat",
+          "d_pair": 0.0007405497255641436,
+          "f_i": 3.829228864398056,
+          "f_j": 3.8284883146724917,
+          "kind": "train-support-vector-near-boundary"
+        },
+        {
+          "index": 1217,
+          "true": "airplane",
+          "pred": "airplane",
+          "d_pair": 0.0007843325718783767,
+          "f_i": 3.8467705509605734,
+          "f_j": 3.845986218388695,
+          "kind": "train-support-vector-near-boundary"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "noise_sigma": 0.25,
+  "selected_clean_ae": "ae-b1024",
+  "clean_ae_bottleneck": 1024,
+  "dae_bottleneck": 1024,
+  "dae_params": 4456099,
+  "dae_best_val_mse": 0.005406143590807915,
+  "clean_ae_test_mse_on_noisy": 0.011114470000565053,
+  "dae_test_mse_on_noisy": 0.005408740267902613,
+  "classifier": "q2-cnn (trained on clean labelled data, NOT fine-tuned here)",
+  "test_acc_clean": 0.7063,
+  "test_acc_noisy_direct": 0.2962,
+  "test_acc_cleanae_recon": 0.4766,
+  "test_acc_dae_recon": 0.5621,
+  "epochs": 40,
+  "batch_size": 128,
+  "lr": 0.001
+}

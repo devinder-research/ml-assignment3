@@ -1,0 +1,7 @@
+{
+  "representation": "frozen bottleneck features of ae-b1024",
+  "bottleneck": 1024,
+  "subset_size": 9000,
+  "subset_seed": 260004,
+  "subset_file": "results/q4/svm_subset_seed260004.npz"
+}

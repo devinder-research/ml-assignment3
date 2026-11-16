@@ -1,0 +1,10 @@
+{
+  "bottleneck": 32,
+  "params": 391875,
+  "epochs": 40,
+  "batch_size": 128,
+  "lr": 0.001,
+  "best_epoch": 35,
+  "val_mse": 0.011399003253877164,
+  "test_mse": 0.01147819901406765
+}

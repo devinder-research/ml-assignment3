@@ -1,0 +1,12 @@
+{
+  "name": "q2-mlp",
+  "params": 1707274,
+  "epochs": 40,
+  "batch_size": 256,
+  "lr": 0.001,
+  "best_epoch": 23,
+  "best_val_acc": 0.5262,
+  "test_loss": 2.7401383628845215,
+  "test_acc": 0.5312,
+  "train_seconds": 79.9
+}

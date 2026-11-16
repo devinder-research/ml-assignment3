@@ -1,0 +1,13 @@
+{
+  "name": "q2-cnn-permuted",
+  "params": 1439818,
+  "epochs": 40,
+  "batch_size": 256,
+  "lr": 0.001,
+  "best_epoch": 6,
+  "best_val_acc": 0.5172,
+  "test_loss": 1.413680311203003,
+  "test_acc": 0.5298,
+  "clean_test_acc": 0.1069,
+  "train_seconds": 378.1
+}

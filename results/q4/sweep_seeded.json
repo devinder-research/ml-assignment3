@@ -1,0 +1,56 @@
+[
+  {
+    "kernel": "linear",
+    "C": 0.01,
+    "train_acc": 0.6759,
+    "val_acc": 0.4106,
+    "n_support_vectors": 7815,
+    "sv_fraction": 0.8683,
+    "fit_seconds": 13.6
+  },
+  {
+    "kernel": "linear",
+    "C": 0.1,
+    "train_acc": 0.7946,
+    "val_acc": 0.3864,
+    "n_support_vectors": 7546,
+    "sv_fraction": 0.8384,
+    "fit_seconds": 26.2
+  },
+  {
+    "kernel": "linear",
+    "C": 1.0,
+    "train_acc": 0.8951,
+    "val_acc": 0.3682,
+    "n_support_vectors": 7402,
+    "sv_fraction": 0.8224,
+    "fit_seconds": 95.3
+  },
+  {
+    "kernel": "linear",
+    "C": 10.0,
+    "train_acc": 0.9664,
+    "val_acc": 0.3662,
+    "n_support_vectors": 7361,
+    "sv_fraction": 0.8179,
+    "fit_seconds": 413.4
+  },
+  {
+    "kernel": "linear",
+    "C": 100.0,
+    "train_acc": 0.9974,
+    "val_acc": 0.3672,
+    "n_support_vectors": 7312,
+    "sv_fraction": 0.8124,
+    "fit_seconds": 3743.9
+  },
+  {
+    "kernel": "rbf",
+    "C": 0.01,
+    "train_acc": 0.3061,
+    "val_acc": 0.2786,
+    "n_support_vectors": 9000,
+    "sv_fraction": 1.0,
+    "fit_seconds": 36.9
+  }
+]
