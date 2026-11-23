@@ -12,27 +12,22 @@ Fixed choices (before any result is seen):
   * C values (5 values spanning 4 orders of magnitude): 0.01, 0.1, 1, 10, 100;
   * solver: sklearn SVC (libsvm), probability=False.
 
-Execution model: every (kernel, C) fit is an independent task executed by
-`--kernel K --C c`; each task appends its row to results/q4/sweep_rows.jsonl.
-`--finalize` assembles sweep.csv, applies the SELECTION RULE (highest
-validation accuracy; ties -> lower C, then lower SV fraction), and evaluates
-the selected model on the official test set ONCE. The linear-kernel rows and
-the RBF C=0.01 row were computed with this exact code (sequentially, seed
-260004) and are seeded verbatim from the completed run's log
-(see results/q4/sweep_seeded.json) because rerunning linear C=100 alone cost
-~1 core-hour; all remaining settings are computed by the task mode.
-
-For EVERY setting we record training accuracy, validation accuracy, the
-fraction of training points that become support vectors, and fit seconds.
-The official test set is evaluated once, after the selection is fixed.
+Run each grid cell with --kernel and --C, then use --finalize to select
+by validation accuracy and evaluate the selected model on the official test
+set. --finalize-only-recorded uses the shipped sweep and the original feature
+cache to reproduce post-training analyses.
 """
 import sys
+import csv
 import json
+import os
+import tempfile
 import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+import joblib
 import numpy as np
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import StandardScaler
@@ -44,29 +39,40 @@ C_VALUES = [0.01, 0.1, 1.0, 10.0, 100.0]
 KERNELS = ["linear", "rbf", "poly"]
 POLY_DEGREE = 3
 Q4DIR = RESULTS_DIR / "q4"
-ROWS_FILE = Q4DIR / "sweep_rows.jsonl"
-SEEDED_FILE = Q4DIR / "sweep_seeded.json"
+SWEEP_FILE = Q4DIR / "sweep.csv"
+RUN_DIR = DATA_DIR / "q4_sweep"
+MODEL_FILE = DATA_DIR / "q4_selected.joblib"
+TEST_FILE = DATA_DIR / "q4_selected_test.npz"
 
 
-def load_xy():
-    ftr = np.load(DATA_DIR / "q4_features_train.npy")
+def make_svm(kernel, C):
+    return SVC(C=C, kernel=kernel, degree=POLY_DEGREE, cache_size=1000,
+               decision_function_shape="ovo")
+
+
+def cell_file(kernel, C):
+    return RUN_DIR / f"{kernel}-{C:g}.json"
+
+
+def load_xy(include_test=False):
+    ftr = np.load(DATA_DIR / "q4_features_train.npy", mmap_mode="r")
     fva = np.load(DATA_DIR / "q4_features_val.npy")
-    fte = np.load(DATA_DIR / "q4_features_test.npy")
     ytr = np.load(DATA_DIR / "q4_labels_train.npy")
     yva = np.load(DATA_DIR / "q4_labels_val.npy")
-    yte = np.load(DATA_DIR / "q4_labels_test.npy")
     sub = np.load(RESULTS_DIR / "q4" / "svm_subset_seed260004.npz")["subset_idx"]
-    scaler = StandardScaler().fit(ftr[sub])
-    return (scaler.transform(ftr[sub]), ytr[sub],
-            scaler.transform(fva), yva, scaler.transform(fte), yte)
+    train = ftr[sub]
+    scaler = StandardScaler().fit(train)
+    result = (scaler.transform(train), ytr[sub], scaler.transform(fva), yva)
+    if not include_test:
+        return result
+    fte = np.load(DATA_DIR / "q4_features_test.npy", mmap_mode="r")
+    yte = np.load(DATA_DIR / "q4_labels_test.npy")
+    return (*result, scaler.transform(fte), yte)
 
 
 def fit_row(kernel, C, Xs, ys, Xv, yva):
-    kwargs = dict(C=C, kernel=kernel, cache_size=1000)
-    if kernel == "poly":
-        kwargs.update(degree=POLY_DEGREE)
     t0 = time.time()
-    clf = SVC(**kwargs)
+    clf = make_svm(kernel, C)
     clf.fit(Xs, ys)
     dt = time.time() - t0
     n_sv = int(clf.n_support_.sum())
@@ -81,54 +87,58 @@ def fit_row(kernel, C, Xs, ys, Xv, yva):
 
 
 def task(kernel, C):
-    Xs, ys, Xv, yva, _, _ = load_xy()
+    Xs, ys, Xv, yva = load_xy()
     row = fit_row(kernel, C, Xs, ys, Xv, yva)
-    ensure_dir(Q4DIR)
-    with open(ROWS_FILE, "a") as f:
-        f.write(json.dumps(row) + "\n")
+    ensure_dir(RUN_DIR)
+    target = cell_file(kernel, C)
+    with tempfile.NamedTemporaryFile(mode="w", dir=RUN_DIR, delete=False) as f:
+        json.dump(row, f)
+    os.replace(f.name, target)
     print(f"kernel={kernel:7s} C={C:<6} train={row['train_acc']:.4f} "
           f"val={row['val_acc']:.4f} sv_frac={row['sv_fraction']:.4f} ({row['fit_seconds']}s)")
 
 
-def finalize():
-    ensure_dir(Q4DIR)
-    rows = []
-    if SEEDED_FILE.exists():
-        rows.extend(json.load(open(SEEDED_FILE)))
-    if ROWS_FILE.exists():
-        with open(ROWS_FILE) as f:
-            rows.extend(json.loads(line) for line in f if line.strip())
-    # de-duplicate, preferring the freshly computed row
-    uniq = {}
-    for r in rows:
-        uniq[(r["kernel"], r["C"])] = r
-    rows = [uniq[k] for k in sorted(uniq, key=lambda k: (k[0], k[1]))]
-    assert len(rows) == len(KERNELS) * len(C_VALUES), (
-        f"expected 15 rows, have {len(rows)}: {[(r['kernel'], r['C']) for r in rows]}")
+def sweep_rows(recorded):
+    cells = {(kernel, C) for kernel in KERNELS for C in C_VALUES}
+    if recorded:
+        with SWEEP_FILE.open(newline="") as f:
+            rows = [
+                {"kernel": r["kernel"], "C": float(r["C"]),
+                 "train_acc": float(r["train_acc"]), "val_acc": float(r["val_acc"]),
+                 "n_support_vectors": int(r["n_support_vectors"]),
+                 "sv_fraction": float(r["sv_fraction"]), "fit_seconds": float(r["fit_seconds"])}
+                for r in csv.DictReader(f)
+            ]
+    else:
+        missing = [cell_file(*cell).name for cell in sorted(cells) if not cell_file(*cell).is_file()]
+        if missing:
+            raise SystemExit("Run these sweep cells first: " + ", ".join(missing))
+        rows = [json.loads(cell_file(*cell).read_text()) for cell in sorted(cells)]
+    if len(rows) != len(cells) or {(r["kernel"], r["C"]) for r in rows} != cells:
+        raise ValueError("Sweep must contain each specified kernel and C exactly once.")
+    return rows
 
-    import csv
-    with open(Q4DIR / "sweep.csv", "w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
-        w.writeheader()
-        for r in rows:
-            w.writerow(r)
 
-    Xs, ys, Xv, yva, Xt, yte = load_xy()
-
+def finalize(recorded=False):
+    rows = sweep_rows(recorded)
     best = max(rows, key=lambda r: (r["val_acc"], -r["C"], -r["sv_fraction"]))
-    print(f"\nSELECTED by validation: kernel={best['kernel']} C={best['C']} "
-          f"val_acc={best['val_acc']:.4f}")
-
-    # ---- single official test evaluation of the selected model
-    kwargs = dict(C=best["C"], kernel=best["kernel"])
-    if best["kernel"] == "poly":
-        kwargs.update(degree=POLY_DEGREE)
-    t0 = time.time()
-    clf = SVC(**kwargs).fit(Xs, ys)
+    Xs, ys, Xv, yva, Xt, yte = load_xy(include_test=True)
+    print(f"Selected by validation: {best['kernel']}, C={best['C']:g}", flush=True)
+    clf = make_svm(best["kernel"], best["C"]).fit(Xs, ys)
     train_acc = accuracy_score(ys, clf.predict(Xs))
     val_acc = accuracy_score(yva, clf.predict(Xv))
     test_pred = clf.predict(Xt)
     test_acc = accuracy_score(yte, test_pred)
+    if recorded and (abs(val_acc - best["val_acc"]) > 0.00005
+                     or int(clf.n_support_.sum()) != best["n_support_vectors"]):
+        raise ValueError("Recorded sweep does not match the current feature cache.")
+    if not recorded:
+        with SWEEP_FILE.open("w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=list(rows[0]))
+            writer.writeheader()
+            writer.writerows(rows)
+    joblib.dump(clf, MODEL_FILE)
+    np.savez(TEST_FILE, predictions=test_pred, labels=yte)
     selection = {
         "representation": load_json_q4rep(),
         "sweep": rows,
@@ -154,15 +164,20 @@ def load_json_q4rep():
 def main():
     import argparse
     ap = argparse.ArgumentParser()
-    ap.add_argument("--kernel", default=None)
-    ap.add_argument("--C", type=float, default=None)
-    ap.add_argument("--finalize", action="store_true")
+    ap.add_argument("--kernel", choices=KERNELS)
+    ap.add_argument("--C", type=float, choices=C_VALUES)
+    mode = ap.add_mutually_exclusive_group()
+    mode.add_argument("--finalize", action="store_true")
+    mode.add_argument("--finalize-only-recorded", action="store_true")
     args = ap.parse_args()
     ensure_dir(Q4DIR)
-    if args.finalize:
-        finalize()
+    if args.finalize or args.finalize_only_recorded:
+        if args.kernel is not None or args.C is not None:
+            ap.error("finalize modes do not accept --kernel or --C")
+        finalize(recorded=args.finalize_only_recorded)
     else:
-        assert args.kernel in KERNELS and args.C in C_VALUES
+        if args.kernel is None or args.C is None:
+            ap.error("provide --kernel and --C, or select a finalize mode")
         task(args.kernel, args.C)
 
 

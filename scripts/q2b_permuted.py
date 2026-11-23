@@ -57,18 +57,13 @@ def main():
         model.load_state_dict(state["state_dict"])
         test = evaluate(model, test_loader, device)
 
-        # Also report clean-test accuracy of the permuted models
-        clean_loaders = make_classifiers_loaders(permuted=False, batch_size=BATCH, seed=SEED)
-        clean_test = evaluate(model, clean_loaders[2], device)
-
         summary[name] = {"name": name, "params": nparams,
                          "epochs": EPOCHS, "batch_size": BATCH, "lr": LR,
                          "best_epoch": state["epoch"], "best_val_acc": state["val_acc"],
                          "test_loss": test["loss"], "test_acc": test["acc"],
-                         "clean_test_acc": clean_test["acc"],
                          "train_seconds": round(t.elapsed(), 1)}
         save_json(summary[name], out_dir / "metrics.json")
-        print(f"=== {name} | test_acc(permuted)={test['acc']:.4f} | clean_test_acc={clean_test['acc']:.4f} ===")
+        print(f"=== {name} | test_acc(permuted)={test['acc']:.4f} ===")
 
     save_json(summary, RESULTS_DIR / "q2" / "q2b_summary.json")
 

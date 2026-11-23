@@ -20,9 +20,10 @@ import torch
 import torch.nn as nn
 import numpy as np
 
+from q3b_denoising import evaluate_ae_mse
 from src.data import split_arrays
 from src.models import ConvAutoencoder
-from src.utils import (RESULTS_DIR, get_device, save_json, set_seed, SEED, Timer, ensure_dir, load_json)
+from src.utils import (RESULTS_DIR, get_device, save_json, set_seed, SEED, load_json)
 
 PROBE_EPOCHS = 30
 PROBE_LR = 1e-3
@@ -44,11 +45,11 @@ def train_probe(Xtr_f, ytr, Xva_f, yva, device):
     opt = torch.optim.Adam(head.parameters(), lr=PROBE_LR)
     loss_fn = nn.CrossEntropyLoss()
     n = len(Xtr_f)
+    Xa = Xtr_f.to(device)
+    ya = torch.from_numpy(ytr).to(device)
     for epoch in range(1, PROBE_EPOCHS + 1):
         head.train()
         perm = torch.randperm(n, generator=torch.Generator().manual_seed(SEED + epoch))
-        Xa = Xtr_f.to(device)
-        ya = torch.from_numpy(ytr).to(device)
         for i in range(0, n, BATCH):
             idx = perm[i:i + BATCH]
             opt.zero_grad(set_to_none=True)
@@ -102,7 +103,6 @@ def main():
         for p in model.parameters():
             p.requires_grad_(False)
 
-        t0 = Timer().t0
         Ftr = extract_features(model, Xtr_t, device)
         Fva = extract_features(model, Xval_t, device)
         Fte = extract_features(model, Xte_t, device)
@@ -122,6 +122,10 @@ def main():
         if name.startswith("dae"):
             Fn = extract_features(model, noisy_te, device)
             entry["probe_test_acc_noisy"] = probe_acc(head, Fn, yte, device)
+            entry["noisy_probe_seed"] = SEED
+            entry["noisy_input_test_mse"] = q3b["dae_test_mse_on_noisy"]
+            entry["val_mse"] = evaluate_ae_mse(model, Xval_t, Xval_t, device)
+            entry["test_mse"] = evaluate_ae_mse(model, Xte_t, Xte_t, device)
         results[name] = entry
         save_json(entry, RESULTS_DIR / "q3" / name / "probe_metrics.json")
         print(f"{name}: val={val_acc:.4f} test(clean)={test_acc_clean:.4f}" +
@@ -133,9 +137,6 @@ def main():
             m = load_json(RESULTS_DIR / "q3" / k / "metrics.json")
             results[k]["val_mse"] = m["val_mse"]
             results[k]["test_mse"] = m["test_mse"]
-        else:  # DAE: its native comparison is MSE on noisy inputs vs clean targets
-            results[k]["val_mse"] = q3b["dae_best_val_mse"]
-            results[k]["test_mse"] = q3b["dae_test_mse_on_noisy"]
 
     save_json(results, RESULTS_DIR / "q3" / "q3c_summary.json")
     print("\n=== Q3(c) summary ===")

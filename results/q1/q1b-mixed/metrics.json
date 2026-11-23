@@ -1,0 +1,13 @@
+{
+  "params": 3676682,
+  "epochs": 60,
+  "batch_size": 256,
+  "lr": 0.001,
+  "seed": 260004,
+  "subset_size": 4500,
+  "replaced": 2250,
+  "best_epoch": 2,
+  "best_val_acc": 0.3236,
+  "test_acc": 0.3311,
+  "test_loss": 1.9566234954833985
+}

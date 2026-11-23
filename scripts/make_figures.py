@@ -69,24 +69,17 @@ axes[0].legend(loc="center right", fontsize=6)
 fig.savefig(FIGS_DIR / "fig_q1b_memorization.png")
 plt.close(fig)
 
-# Q1(b) gap figure (train minus val)
-r_true = read_log("q1/q1b-true")
-r_rand = read_log("q1/q1b-random")
-fig, ax = plt.subplots(figsize=(3.4, 2.4))
-ax.plot(col(r_true, "epoch", int), [t - v for t, v in zip(col(r_true, "train_acc"), col(r_true, "val_acc"))],
-        color=C_GREEN, label="true labels")
-ax.plot(col(r_rand, "epoch", int), [t - v for t, v in zip(col(r_rand, "train_acc"), col(r_rand, "val_acc"))],
-        color=C_ORANGE, label="random labels")
-import os
-if os.path.exists(RESULTS_DIR / "q1" / "q1b-random_4k" / "log.csv"):
-    r_rand4 = read_log("q1/q1b-random_4k")
-    ax.plot(col(r_rand4, "epoch", int), [t - v for t, v in zip(col(r_rand4, "train_acc"), col(r_rand4, "val_acc"))],
-            color=C_RED, label="random labels (4.5k)")
-ax.set_xlabel("epoch")
-ax.set_ylabel("train acc - val acc")
-ax.legend(fontsize=6)
+# Q1(b): generalisation and memorisation in the same run
+mixed = read_log("q1/q1b-mixed")
+fig, ax = plt.subplots(figsize=(4.2, 2.6))
+epochs = col(mixed, "epoch", int)
+ax.plot(epochs, col(mixed, "val_acc"), color=C_BLUE, label="clean validation")
+ax.plot(epochs, col(mixed, "noisy_target_acc"), color=C_RED, label="fit to wrong targets")
+ax.axhline(0.1, color="0.5", linestyle=":", label="10% chance")
+ax.set(xlabel="epoch", ylabel="accuracy", ylim=(0, 1.03))
+ax.legend(loc="center right")
 ax.grid(alpha=0.3)
-fig.savefig(FIGS_DIR / "fig_q1b_gap.png")
+fig.savefig(FIGS_DIR / "fig_q1b_mixed.png")
 plt.close(fig)
 
 # ---------------- Q2(a,b): CNN vs MLP clean/permuted ----------------
@@ -122,7 +115,6 @@ for name, color in [("q2-cnn", C_BLUE), ("q2-mlp", C_RED)]:
     axes[1].plot(ks, cw, marker="s", linestyle="--", color=color, label=f"{name} conf|wrong")
 axes[0].set_xlabel("shift k (px)"); axes[0].set_ylabel("test accuracy"); axes[0].grid(alpha=0.3); axes[0].legend()
 axes[1].set_xlabel("shift k (px)"); axes[1].set_ylabel("mean confidence"); axes[1].grid(alpha=0.3); axes[1].legend(fontsize=6)
-ent = [q2c[name][str(k)]["flip_to_error"] for k in ks]
 axes[2].plot(ks, [q2c["q2-cnn"][str(k)]["flip_to_error"] for k in ks], marker="o", color=C_BLUE, label="CNN")
 axes[2].plot(ks, [q2c["q2-mlp"][str(k)]["flip_to_error"] for k in ks], marker="o", color=C_RED, label="MLP")
 axes[2].set_xlabel("shift k (px)"); axes[2].set_ylabel("flip-to-error rate"); axes[2].grid(alpha=0.3)
@@ -159,7 +151,7 @@ for k, v in q3c.items():
     ax.scatter(v["test_mse"], v["probe_test_acc_clean"], marker=marker, s=40)
     ax.annotate(k.replace("ae-", "AE-"), (v["test_mse"], v["probe_test_acc_clean"]),
                 fontsize=6, xytext=(3, 3), textcoords="offset points")
-ax.set_xlabel("test reconstruction MSE")
+ax.set_xlabel("test reconstruction MSE (clean images)")
 ax.set_ylabel("linear-probe test accuracy")
 ax.grid(alpha=0.3)
 fig.savefig(FIGS_DIR / "fig_q3c_probe_vs_mse.png")

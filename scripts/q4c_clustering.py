@@ -1,13 +1,12 @@
 """Q4(c): clustering the fixed representation (no labels during fitting).
 
 Method and number of clusters are chosen with TRAINING + VALIDATION data only:
-  * method: KMeans (Euclidean geometry on the standardized fixed features;
-    simple, deterministic, and appropriate for compact, spherical clusters);
-  * number of clusters k in {10, 20}: compared on a fixed random 1,500-sample
-    subset of the 5,000 validation images using the silhouette score
-    (higher is better). The official test set is NOT used for this choice.
-  * fitting data for the final model: ALL 45,000 training representations
-    (MiniBatchKMeans, batch 4096, n_init=4, seed 260004);
+  * Compare 10 and 20 clusters with MiniBatchKMeans, then compare
+    MiniBatchKMeans, full KMeans and a diagonal GMM at the selected k.
+  * Score all candidates by silhouette on the same seeded 1,500-image
+    validation subset. Fit the selected method on the 45,000 train features.
+  * MiniBatchKMeans uses batch size 4096 and 4 initializations during
+    selection, with 8 initializations in the final fit.
   * assignment: test representations are assigned to clusters WITHOUT labels;
     test labels are used only afterwards, for evaluation.
 
@@ -30,7 +29,7 @@ from sklearn.metrics import (adjusted_mutual_info_score, adjusted_rand_score,
 from sklearn.preprocessing import StandardScaler
 
 from src.utils import (DATA_DIR, RESULTS_DIR, CIFAR10_CLASSES, SEED, save_json,
-                       ensure_dir, load_json)
+                       load_json)
 
 K_CANDIDATES = [10, 20]
 SIL_SUBSAMPLE = 1500
@@ -41,9 +40,6 @@ def main():
     ftr = np.load(DATA_DIR / "q4_features_train.npy")
     fva = np.load(DATA_DIR / "q4_features_val.npy")
     fte = np.load(DATA_DIR / "q4_features_test.npy")
-    ytr = np.load(DATA_DIR / "q4_labels_train.npy")
-    yva = np.load(DATA_DIR / "q4_labels_val.npy")
-    yte = np.load(DATA_DIR / "q4_labels_test.npy")
 
     scaler = StandardScaler().fit(ftr)   # clustering uses ALL training reps
     Xtr, Xva, Xte = scaler.transform(ftr), scaler.transform(fva), scaler.transform(fte)
@@ -95,6 +91,7 @@ def main():
     test_clusters = km.predict(Xte)
 
     # ---- evaluation (labels used AFTER assignment only)
+    yte = np.load(DATA_DIR / "q4_labels_test.npy")
     ARI = adjusted_rand_score(yte, test_clusters)
     NMI = normalized_mutual_info_score(yte, test_clusters)
     AMI = adjusted_mutual_info_score(yte, test_clusters)

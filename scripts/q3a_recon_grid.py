@@ -12,7 +12,7 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 
-from src.data import load_split_arrays
+from src.data import get_raw_cifar10
 from src.models import ConvAutoencoder
 from src.utils import RESULTS_DIR, FIGS_DIR, get_device, load_json, ensure_dir, SEED
 
@@ -32,7 +32,7 @@ def grid(images, recons, titles, path):
 
 def main():
     device = get_device()
-    _, _, Xte, _ = load_split_arrays()
+    Xte = get_raw_cifar10(train=False).data[:8].astype(np.float32) / 255.0
     q3a = load_json(RESULTS_DIR / "q3" / "q3a_summary.json")
     sel = min(q3a, key=lambda k: q3a[k]["val_mse"])
     B = q3a[sel]["bottleneck"]

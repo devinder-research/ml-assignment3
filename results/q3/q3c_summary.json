@@ -37,7 +37,9 @@
     "probe_val_acc": 0.5023999810218811,
     "probe_test_acc_clean": 0.5147,
     "probe_test_acc_noisy": 0.4425,
-    "val_mse": 0.005406143590807915,
-    "test_mse": 0.005408740267902613
+    "noisy_probe_seed": 260004,
+    "noisy_input_test_mse": 0.005408740267902613,
+    "val_mse": 0.005018544389307499,
+    "test_mse": 0.004998611214756966
   }
 }

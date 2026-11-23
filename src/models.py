@@ -63,7 +63,7 @@ class ConvAutoencoder(nn.Module):
 
     Encoder: conv(3->32,s2) -> conv(32->64,s2) -> conv(64->128,s2) -> fc(4*4*128->B)
     Decoder: fc(B->4*4*128) -> deconv(128->64,k4,s2) -> deconv(64->32,k4,s2)
-             -> deconv(32->3,k4,s2, output_padding=1) -> sigmoid
+             -> deconv(32->3,k4,s2) -> sigmoid
     """
 
     def __init__(self, bottleneck=256):

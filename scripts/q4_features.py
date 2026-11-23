@@ -88,6 +88,15 @@ def main():
                  class_counts=np.bincount(ytr[sub]))
         print("subset class counts:", np.bincount(ytr[sub]))
 
+    # Sweep cells belong to this feature version. Clear stale generated rows
+    # before another sweep can be finalized.
+    sweep_dir = DATA_DIR / "q4_sweep"
+    if sweep_dir.exists():
+        for row in sweep_dir.glob("*.json"):
+            row.unlink()
+    for name in ("q4_selected.joblib", "q4_selected_test.npz"):
+        (DATA_DIR / name).unlink(missing_ok=True)
+
     save_json({"representation": f"frozen bottleneck features of {sel_name}",
                "bottleneck": int(B),
                "subset_size": int(SUBSET_SIZE), "subset_seed": SEED,

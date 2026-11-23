@@ -108,8 +108,9 @@ def main():
                 accs.append(r["acc"])
                 cc.append(r["conf_correct"]); cw.append(r["conf_wrong"]); ent.append(r["mean_entropy"])
                 newly_wrong = (r["pred"] != r["true"]) & clean_correct
-                flips.append(newly_wrong.mean())
-                print(f"{name} k={k} {dname}  acc={r['acc']:.4f} flip_to_error={newly_wrong.mean():.4f}")
+                flip_rate = newly_wrong.sum() / clean_correct.sum()
+                flips.append(flip_rate)
+                print(f"{name} k={k} {dname}  acc={r['acc']:.4f} flip_to_error={flip_rate:.4f}")
             per_k[str(k)] = {
                 "acc": float(np.mean(accs)),
                 "acc_std": float(np.std(accs)),

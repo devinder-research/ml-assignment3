@@ -8,6 +8,5 @@
   "best_val_acc": 0.531,
   "test_loss": 3.333151494598389,
   "test_acc": 0.5349,
-  "clean_test_acc": 0.0715,
   "train_seconds": 81.1
 }

@@ -5,7 +5,9 @@ We train the same high-capacity MLP (3072-1024-512-10, Dropout=0) on
  (ii) i.i.d. random labels for the same 45,000 images, and
  (iii) i.i.d. random labels for a stratified 4,500-image subset
  (a memorisation probe well inside the model's capacity);
-tracking TRAIN and VALIDATION metrics every epoch. Validation always uses
+tracking TRAIN and VALIDATION metrics every epoch. A fourth run replaces half
+of the 4,500 labels with uniformly sampled wrong classes and tracks accuracy
+on those replacement targets alongside clean validation accuracy. Validation always uses
 the TRUE labels. (i), (ii): 400 epochs, Adam lr 1e-3 (Adam was retained:
 higher rates stall or oscillate on noise gradients); (iii): 300 epochs.
 
@@ -13,6 +15,7 @@ If useful structure were learnable from the random labels, validation accuracy
 would exceed chance (10%); if the MLP only memorises, training accuracy rises
 to ~1 while validation stays flat/degrades.
 """
+import argparse
 import sys
 from pathlib import Path
 
@@ -32,7 +35,39 @@ BATCH = 256
 LR = 1e-3
 
 
+def mixed_control(xtr, ytr, subset, val_loader, test_loader, device):
+    """Track generalisation and fitting of wrong targets in the same run."""
+    set_seed(SEED)
+    rng = np.random.RandomState(SEED + 1)
+    labels = ytr[subset].copy()
+    replaced = np.sort(rng.choice(len(labels), size=len(labels) // 2, replace=False))
+    labels[replaced] = (labels[replaced] + rng.randint(1, 10, len(replaced))) % 10
+    images = xtr[torch.from_numpy(subset)]
+    targets = torch.from_numpy(labels)
+    train = DataLoader(TensorDataset(images, targets), batch_size=BATCH, shuffle=True,
+                       generator=torch.Generator().manual_seed(SEED))
+    noisy = DataLoader(TensorDataset(images[replaced], targets[replaced]), batch_size=1024)
+    model = MLP(hidden=(1024, 512))
+    out = RESULTS_DIR / "q1" / "q1b-mixed"
+    epochs = 60
+    train_classifier(model, train, val_loader, device, epochs=epochs, lr=LR,
+                     log_path=out / "log.csv", ckpt_path=out / "best.pt",
+                     noisy_loader=noisy)
+    state = torch.load(out / "best.pt", map_location=device)
+    model.load_state_dict(state["state_dict"])
+    test = evaluate(model, test_loader, device)
+    metrics = {"params": count_parameters(model), "epochs": epochs,
+               "batch_size": BATCH, "lr": LR, "seed": SEED,
+               "subset_size": len(labels), "replaced": len(replaced),
+               "best_epoch": state["epoch"], "best_val_acc": state["val_acc"],
+               "test_acc": test["acc"], "test_loss": test["loss"]}
+    save_json(metrics, out / "metrics.json")
+
+
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--mixed-only", action="store_true")
+    args = parser.parse_args()
     device = get_device()
     print("device:", device)
     set_seed(SEED)
@@ -57,6 +92,9 @@ def main():
     idx_small = np.sort(idx_small)
     conditions["random_4k"] = (torch.from_numpy(rng.randint(0, 10, size=len(idx_small))), idx_small)
 
+    mixed_control(xtr, ytr, idx_small, val_loader, test_loader, device)
+    if args.mixed_only:
+        return
     summary = {}
     for name, entry in conditions.items():
         if isinstance(entry, tuple):

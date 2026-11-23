@@ -14,3 +14,5 @@ report/build/
 
 # OS
 .DS_Store
+.venv/
+report/main.pdf

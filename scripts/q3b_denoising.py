@@ -12,7 +12,7 @@ Protocol:
     and clean targets, same training budget as Q3(a).
   * Fixed CNN classifier = the Q2(a) CNN, trained on clean labelled data.
     NOT fine-tuned for any condition here.
-  * Test-set conditions (10,000 official test images, one noise draw, seed 260004):
+  * Test-set conditions (10,000 official test images, one noise draw, seed 999):
       1. clean test images (reference)                       [reused from Q2(a)]
       2. noisy test images, classified directly
       3. noisy test images -> clean AE -> reconstructions classified
@@ -32,7 +32,7 @@ import numpy as np
 from src.data import split_arrays, normalize_batch
 from src.models import CNN, ConvAutoencoder, count_parameters
 from src.utils import (RESULTS_DIR, get_device, save_json, set_seed, SEED,
-                       Timer, ensure_dir, load_json)
+                       ensure_dir, load_json)
 
 NOISE_SIGMA = 0.25
 EPOCHS = 40
@@ -92,11 +92,10 @@ def main():
     print(f"selected clean AE: {sel_name} (val_mse={q3a[sel_name]['val_mse']:.5f})")
 
     # ---- train DAE (same architecture as selected clean AE)
-    Xtr, ytr, Xval, yval, Xte, yte = split_arrays()
+    Xtr, _, Xval, _, Xte, yte = split_arrays()
     Xtr_t = torch.from_numpy(np.transpose(Xtr, (0, 3, 1, 2))).float()
     Xval_t = torch.from_numpy(np.transpose(Xval, (0, 3, 1, 2))).float()
     Xte_t = torch.from_numpy(np.transpose(Xte, (0, 3, 1, 2))).float()
-    ytr_t = torch.from_numpy(ytr)
     yte_t = torch.from_numpy(yte)
 
     set_seed(SEED)

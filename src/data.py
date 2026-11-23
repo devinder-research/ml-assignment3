@@ -20,7 +20,7 @@ from torch.utils.data import DataLoader, TensorDataset, Subset
 from torchvision import datasets, transforms
 
 from .utils import (CIFAR10_MEAN, CIFAR10_STD, DATA_DIR, PERMUTE_FILE,
-                    SEED, SPLIT_FILE)
+                    RAW_ROLL, SEED, SPLIT_FILE)
 
 NORMALIZE = transforms.Normalize(CIFAR10_MEAN, CIFAR10_STD)
 TO_TENSOR = transforms.ToTensor()
@@ -49,7 +49,7 @@ def create_split():
 
     SPLIT_FILE.parent.mkdir(parents=True, exist_ok=True)
     np.savez(SPLIT_FILE, train_idx=train_idx, val_idx=val_idx,
-             seed=SEED, roll_number="P26AI0004")
+             seed=SEED, roll_number=RAW_ROLL)
     return train_idx, val_idx
 
 

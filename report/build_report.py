@@ -6,13 +6,12 @@ two columns, Times family, ~9pt body.
 
 Usage:  python report/build_report.py --commit <git-hash-of-freeze-commit>
 """
-import sys
 import csv
 import json
 import argparse
+import re
+from xml.sax.saxutils import escape
 from pathlib import Path
-
-import numpy as np
 
 REPO = Path(__file__).resolve().parent.parent
 RESULTS = REPO / "results"
@@ -24,48 +23,41 @@ from reportlab.lib import colors
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.enums import TA_JUSTIFY, TA_LEFT, TA_CENTER
 from reportlab.platypus import (BaseDocTemplate, PageTemplate, Frame, Paragraph,
-                                Spacer, Image, Table, TableStyle, NextPageTemplate,
-                                PageBreak)
-from reportlab.pdfgen import canvas
+                                Image, Table, TableStyle, NextPageTemplate,
+                                FrameBreak, KeepTogether)
 from PIL import Image as PILImage
 
 PAGE_W, PAGE_H = letter
-ML, MR = 0.72 * inch, 0.72 * inch
-MT, MB = 0.66 * inch, 0.62 * inch
-GUTTER = 0.28 * inch
-COL_W = (PAGE_W - ML - MR - GUTTER) / 2
+COL_W = 3.25 * inch
+GUTTER = 0.3125 * inch
+ML = MR = (PAGE_W - 2 * COL_W - GUTTER) / 2
+MT, MB = 1.0 * inch, 1.125 * inch
 COL_H = PAGE_H - MT - MB
 
 INK = colors.HexColor("#111111")
 GRAY = colors.HexColor("#444444")
-ACCENT = colors.HexColor("#0B5394")
 
 
 def st(name, **kw):
-    base = dict(fontName="Times-Roman", fontSize=9.4, leading=12.5,
+    base = dict(fontName="Times-Roman", fontSize=10, leading=12,
                 textColor=INK, alignment=TA_JUSTIFY, spaceBefore=1.5, spaceAfter=2.5)
     base.update(kw)
     return ParagraphStyle(name, **base)
 
 S = {
-    "title": st("title", fontName="Times-Bold", fontSize=19, leading=22.5,
+    "title": st("title", fontName="Times-Bold", fontSize=18, leading=21,
                 alignment=TA_CENTER, textColor=INK, spaceAfter=3),
     "authors": st("authors", fontSize=8.6, leading=10.5, alignment=TA_CENTER, spaceAfter=1),
     "rollinfo": st("rollinfo", fontSize=7.3, leading=9.3, alignment=TA_CENTER,
                    textColor=GRAY, spaceAfter=2),
-    "abstract": st("abstract", fontSize=8.8, leading=11.0,
-                   leftIndent=12, rightIndent=12, spaceBefore=1, spaceAfter=5),
-    "keywords": st("keywords", fontSize=7.8, leading=10, alignment=TA_LEFT,
-                   leftIndent=12, rightIndent=12, spaceAfter=2),
     "h1": st("h1", fontName="Times-Bold", fontSize=11.3, leading=13.5,
-             spaceBefore=5, spaceAfter=2.5, alignment=TA_LEFT, textColor=INK),
+             spaceBefore=5, spaceAfter=2.5, alignment=TA_LEFT, keepWithNext=1),
     "h2": st("h2", fontName="Times-Bold", fontSize=9.6, leading=11.5,
-             spaceBefore=3.5, spaceAfter=1.8, alignment=TA_LEFT, textColor=INK),
+             spaceBefore=3.5, spaceAfter=1.8, alignment=TA_LEFT, keepWithNext=1),
     "body": st("body"),
-    "caption": st("caption", fontSize=6.9, leading=8.3, alignment=TA_CENTER,
+    "caption": st("caption", fontSize=8.0, leading=9.3, alignment=TA_CENTER,
                   textColor=GRAY, spaceBefore=0.5, spaceAfter=3),
-    "footnote": st("footnote", fontSize=6.4, leading=7.8, alignment=TA_JUSTIFY, spaceAfter=2),
-    "ref": st("ref", fontSize=7.0, leading=8.6, alignment=TA_LEFT,
+    "ref": st("ref", fontSize=9.0, leading=10.8, alignment=TA_LEFT,
               leftIndent=10, firstLineIndent=-10, spaceAfter=1.5),
 }
 
@@ -91,7 +83,7 @@ def img(path, width=COL_W, max_h=None):
         width = height * w / h
     return Image(str(path), width=width, height=height)
 
-def simple_table(data, col_widths, header=True, fontsize=6.1, align_center=True):
+def simple_table(data, col_widths, fontsize=6.1, align_center=True):
     style = [
         ("FONTNAME", (0, 0), (-1, 0), "Times-Bold"),
         ("FONTNAME", (0, 1), (-1, -1), "Times-Roman"),
@@ -106,7 +98,9 @@ def simple_table(data, col_widths, header=True, fontsize=6.1, align_center=True)
         ("RIGHTPADDING", (0, 0), (-1, -1), 3),
         ("ALIGN", (0, 0), (-1, -1), "CENTER" if align_center else "LEFT"),
     ]
-    t = Table(data, colWidths=col_widths, hAlign="CENTER")
+    if sum(col_widths) > COL_W:
+        col_widths = [width * COL_W / sum(col_widths) for width in col_widths]
+    t = Table(data, colWidths=col_widths, hAlign="CENTER", repeatRows=1)
     t.setStyle(TableStyle(style))
     return t
 
@@ -125,25 +119,10 @@ REPO_URL = "https://github.com/devinder-research/ml-assignment3"
 SEED = "260004"
 
 
-def on_page(canv, doc):
-    canv.saveState()
-    canv.setStrokeColor(colors.HexColor("#BBBBBB"))
-    canv.setLineWidth(0.5)
-    canv.line(ML, PAGE_H - 0.42 * inch, PAGE_W - MR, PAGE_H - 0.42 * inch)
-    canv.setFillColor(GRAY)
-    canv.setFont("Times-Roman", 6.4)
-    canv.drawString(ML, PAGE_H - 0.33 * inch,
-                    "Machine Learning — Assignment 3  ·  MLPs, CNNs, Autoencoders, SVMs and Clustering on CIFAR10")
-    canv.drawRightString(PAGE_W - MR, PAGE_H - 0.33 * inch, "Devinder · P26AI0004")
-    canv.line(ML, 0.42 * inch, PAGE_W - MR, 0.42 * inch)
-    canv.drawString(ML, 0.31 * inch, "Repository: " + REPO_URL)
-    canv.drawRightString(PAGE_W - MR, 0.31 * inch, f"page {doc.page}")
-    canv.restoreState()
-
-
-def build(commit_hash):
+def build(commit_hash, repo_url, output):
     q1a = jload("q1/q1a_summary.json")
     q1b = jload("q1/q1b_summary.json")
+    mixed = jload("q1/q1b-mixed/metrics.json")
     q2a = jload("q2/q2a_summary.json")
     q2b = jload("q2/q2b_summary.json")
     q2c = jload("q2/q2c_summary.json")
@@ -166,23 +145,20 @@ def build(commit_hash):
         "MLPs, CNNs, Autoencoders, SVMs and<br/>Clustering on CIFAR10", S["title"]))
     story.append(Paragraph("<b>Devinder</b>&nbsp;&nbsp;·&nbsp;&nbsp;Roll number: <b>P26AI0004</b>", S["authors"]))
     story.append(Paragraph(
-        f"Repository: {REPO_URL}<br/>"
-        f"(raw files: /tree/main) &nbsp;·&nbsp; Commit hash: <b>{commit_hash}</b><br/>"
-        "Split seed: 260004 (numeric characters of P26AI0004, in order) &nbsp;·&nbsp; 16 Nov 2026",
+        f"Repository: <link href='{escape(repo_url)}'>{escape(repo_url)}</link><br/>"
+        f"Final repository commit: <b>{commit_hash}</b>",
         S["rollinfo"]))
-    story.append(Paragraph(
-        "<b>Abstract.</b> We study five questions on CIFAR10 under one fixed protocol. The 50,000 official "
-        "training images are split once (stratified, seed 260004) into 45,000 train / 5,000 validation; the "
-        "official test set is used only for final reporting. We show that an MLP fails by overfitting (not by "
-        "underfitting), that capacity suffices to memorise random labels (useful structure is learned before "
-        "memorisation), that a budget-matched CNN wins because of its spatial inductive bias (a permutation "
-        "control and a translation sweep isolate the mechanism), that convolutional autoencoders trade "
-        "bottleneck capacity against reconstruction error but that denoising, not raw reconstruction, is what a "
-        "classifier needs, and that, on a fixed frozen representation, an SVM selected by validation and a "
-        "label-free KMeans reveal complementary—and partly discordant—decision structure.", S["abstract"]))
-    story.append(Paragraph(
-        "<b>Keywords</b> — CIFAR10 · MLP · CNN · convolutional autoencoder · denoising · SVM · KMeans · "
-        "memorisation · translation robustness", S["keywords"]))
+    story.append(FrameBreak())
+    story.append(Paragraph("<b>Abstract</b>", st("abstract_head", fontSize=11,
+                                                 alignment=TA_CENTER)))
+    story.append(body(
+        "<i>We compare classifiers and representations on a fixed CIFAR10 split. A large training–validation "
+        "gap explains the baseline MLP's low accuracy. Under mixed labels, validation improves early and "
+        "then falls as the MLP fits incorrect targets. A CNN achieves higher clean accuracy and loses much "
+        "of the advantage when the pixels are permuted. Denoising improves the fixed CNN's accuracy on "
+        "corrupted inputs and frozen probes show that reconstruction error and class information rank "
+        "the encoders differently. On the selected autoencoder's features, the SVM recovers more class "
+        "structure than label-free clustering.</i>"))
 
     story.append(h1("1&nbsp;&nbsp;Setup and protocol"))
     story.append(body(
@@ -191,14 +167,14 @@ def build(commit_hash):
         "<b>once</b> with seed 260004 (all numeric characters of the roll number, in order) using a stratified "
         "<i>sklearn.train_test_split</i> (<i>test_size=5000</i>) into 45,000 train / 5,000 validation; indices "
         "are committed at <font face='Courier' size='6.5'>split/cifar10_split_seed260004.npz</font> (train/val "
-        "counts: 4,500/450 per class; overlap 0). The validation set is used <b>only</b> for model, "
+        "counts: 4,500/500 per class; overlap 0). The validation set is used <b>only</b> for model, "
         "architecture and hyperparameter selection. The official test set is never used for tuning and is "
         "evaluated once per final configuration. Test images are also used for analysis-only purposes (Q3 "
         "reconstruction grids, Q4 near-boundary inspection), which do not feed back into any choice."))
     story.append(body(
         "<b>Common training budget.</b> No augmentation anywhere. Classifiers: Adam lr 1e-3, 40 epochs, batch "
         "256, cross-entropy, weight decay 0 unless stated (exceptions: the Q1(b) memorisation runs use the "
-        "same optimizer, with 400 epochs for the 45k conditions and 300 for the 4.5k subset probe). "
+        "same optimizer, with 400 epochs for the 45k conditions, 300 for the 4.5k random-label probe and 60 for the mixed-label control). "
         "Autoencoders: Adam lr 1e-3, 40 epochs, batch 128, "
         "MSE loss on [0,1] images. Linear probes: Adam lr 1e-3, 30 epochs, batch 1024, on <i>frozen</i> "
         "encoders. SVMs: StandardScaler fit on the 9,000-sample SVM subset only. Seeds are fixed to 260004 for "
@@ -209,12 +185,9 @@ def build(commit_hash):
         "validation-selected clean AE of Q3(a) is reused as the Q3(b) baseline, the frozen probe backbone of "
         "Q3(c), and the fixed representation of Q4. All other models are trained independently."))
     story.append(body(
-        "<b>Threats to validity.</b> MPS kernels are not guaranteed bit-deterministic across runs/machines; "
-        "the seed pins data order and weight initialisation, and results were verified stable across repeated "
-        "runs. No augmentation is used, deliberately: any augmentation would trade against the controlled "
-        "comparisons, at the cost of absolute accuracy. All architectural choices were fixed <i>before</i> test "
-        "evaluation; nothing in the test set informed any choice. Each claimed reuse is recorded at the point "
-        "of use and summarised in §6; per-run logs are committed and match every number in this report."))
+        "<b>Limitations.</b> Results are from a single split and initialization seed. Hardware and backend "
+        "differences can affect numerical reproducibility. The experiments use fixed training budgets and "
+        "no data augmentation. Test analysis is descriptive and does not select hyperparameters."))
 
     # ================= Q1 =================
     story.append(h1("2&nbsp;&nbsp;Q1 — MLP failure modes and memorisation"))
@@ -246,25 +219,16 @@ def build(commit_hash):
     story.append(caption("<b>Figure 1.</b> Q1(a) — train/validation accuracy. mlp-base overfits: train &gt;&gt; val, "
                          "validation plateaus early; mlp-reg (identical budget) barely lifts validation; mlp-small "
                          "confirms the regime."))
-    _log_base = read_log("q1/mlp-base") if (RESULTS / "q1" / "mlp-base" / "log.csv").exists() else None
-    if _log_base:
-        _fin_train = float(_log_base[-1]["train_acc"])
-        _peak_ep = int(np.argmax([float(r["val_acc"]) for r in _log_base])) + 1
-        _fin_reg = float(read_log("q1/mlp-reg")[-1]["train_acc"])
-        _evid = (f"mlp-base reaches {PCT(_fin_train, 0)} training accuracy by epoch 40 while validation sits flat "
-                 f"(best {PCT(q1a['mlp-base']['best_val_acc'])}, {PCT(q1a['mlp-base']['test_acc'])} test); "
-                 f"mlp-reg ends at {PCT(_fin_reg, 0)} training with only a {100*(q1a['mlp-reg']['best_val_acc'] - q1a['mlp-base']['best_val_acc']):+.1f}-pt "
-                 "validation gain; mlp-small shrinks capacity 4.5x yet also overfits and generalises no better.")
-    else:
-        _evid = ("mlp-base reaches high training accuracy while validation plateaus (Fig. 1, Table 1); mlp-reg "
-                 "cuts training drastically but moves validation little; mlp-small generalises no better.")
+    base_last = float(read_log("q1/mlp-base")[-1]["train_acc"])
+    reg_last = float(read_log("q1/mlp-reg")[-1]["train_acc"])
+    val_gain = 100 * (q1a["mlp-reg"]["best_val_acc"] - q1a["mlp-base"]["best_val_acc"])
     story.append(body(
-        "<b>Evidence.</b> " + _evid + " H2 is rejected outright: every MLP, at every budget tested, trains to "
-        "&gt;0.90 — fitting and optimisation are not the constraint. Crucially, excising capacity or adding "
-        "regularisation reduces memorisation drastically yet recovers almost no validation accuracy. The model "
-        "class does not fail because it has too much memory; it fails because it lacks the structure to "
-        "generalise — training is easy, generalisation is blocked. H1 is supported in the stronger form: the "
-        "binding constraint is the absence of spatial inductive bias (quantified by Q2's +17-pt CNN gap)."))
+        f"<b>Evidence.</b> The baseline ends at {PCT(base_last)} train and "
+        f"{PCT(q1a['mlp-base']['best_val_acc'])} peak validation accuracy. That gap supports "
+        f"overfitting over underfitting for this baseline. Regularization reduces final train accuracy "
+        f"to {PCT(reg_last)} and changes peak validation accuracy by {val_gain:+.1f} percentage points. "
+        "The low-capacity diagnostic also develops a large generalization gap. Q1 establishes the "
+        "gap. The permutation intervention in Q2 examines the separate hypothesis about spatial structure."))
 
     story.append(h2("2.2&nbsp;&nbsp;Q1(b): Fitting examples that should not generalise"))
     story.append(body(
@@ -277,30 +241,34 @@ def build(commit_hash):
         [["labels", "best val (ep)", "test acc"],
          ["true (45k)", f"{PCT(q1b['true']['best_val_acc'])} (ep {q1b['true']['best_epoch']})", PCT(q1b['true']['test_acc'])],
          ["random (45k)", f"{PCT(q1b['random']['best_val_acc'])} (ep {q1b['random']['best_epoch']})", PCT(q1b['random']['test_acc'])],
-         ["random (4.5k)", f"{PCT(q1b['random_4k']['best_val_acc'])} (ep {q1b['random_4k']['best_epoch']})", PCT(q1b['random_4k']['test_acc'])]],
+         ["random (4.5k)", f"{PCT(q1b['random_4k']['best_val_acc'])} (ep {q1b['random_4k']['best_epoch']})", PCT(q1b['random_4k']['test_acc'])],
+         ["mixed (4.5k)", f"{PCT(mixed['best_val_acc'])} (ep {mixed['best_epoch']})", PCT(mixed['test_acc'])]],
         col_widths=[1.05*inch, 1.3*inch, 0.65*inch], fontsize=6.0))
     story.append(caption("<b>Table 2.</b> Q1(b) — memorisation setting, final numbers (curves in Fig. 2)."))
     story.append(figure(FIGS / "fig_q1b_memorization.png", COL_W, 2.15 * inch))
-    story.append(caption("<b>Figure 2.</b> Q1(b) — memorisation regime. Random labels: train -&gt; ~100%, val flat "
-                         "at chance. True labels: validation rises with training, then peaks and degrades "
-                         "while training keeps improving."))
-    story.append(figure(FIGS / "fig_q1b_gap.png", COL_W * 0.62, 1.55 * inch))
-    story.append(caption("<b>Figure 3.</b> Q1(b) — train minus validation accuracy vs epoch: the gap opens "
-                         "after early training, i.e. memorisation dominates late in training."))
-    _r4 = read_log("q1/q1b-random_4k")
-    _r45 = read_log("q1/q1b-random")
-    _rand4_train = float(_r4[-1]["train_acc"])
-    _rand45_train = float(_r45[-1]["train_acc"])
+    rand45 = float(read_log("q1/q1b-random")[-1]["train_acc"])
+    rand_small = float(read_log("q1/q1b-random_4k")[-1]["train_acc"])
+    story.append(caption(
+        f"<b>Figure 2.</b> The full random-label run reaches {PCT(rand45)} train accuracy, "
+        f"and the 4.5k run reaches {PCT(rand_small)}. Their validation accuracy stays near chance."))
     story.append(body(
-        "<b>Did useful structure precede memorisation?</b> With random labels, the MLP fits the noise: "
-        f"training accuracy climbs (to {PCT(_rand4_train, 0)} on the 4.5k subset and {PCT(_rand45_train, 0)} "
-        "on the full 45k, final-epoch values) while validation never meaningfully exceeds the 10% chance line — "
-        "the model interpolates examples that carry no generalisable signal. With true labels, validation "
-        "improves jointly with training until about epoch "
-        f"{q1b['true']['best_epoch']}, after which training keeps improving while validation stalls or "
-        "degrades — the trajectory separates a <b>useful-structure phase</b> from a <b>memorisation phase</b>. "
-        "Useful structure is learned <i>before</i> memorisation begins; the generalising model is an early one. "
-        "(Cf. Zhang et&nbsp;al., [2].)"))
+        "<b>Mixed-label control.</b> With the same 4,500 training images, replace 2,250 labels "
+        "with a uniformly sampled different class. Track how well the model predicts those wrong "
+        "targets after each epoch, alongside its accuracy on the separate clean validation set "
+        "(Fig. 3). Uniform guesses give 10% target accuracy."))
+    story.append(figure(FIGS / "fig_q1b_mixed.png", COL_W, 2.0 * inch))
+    story.append(caption("<b>Figure 3.</b> Clean validation accuracy and accuracy on wrong training targets."))
+    mixed_log = read_log("q1/q1b-mixed")
+    mixed_peak = mixed_log[mixed["best_epoch"] - 1]
+    late_target = float(mixed_log[-1]["noisy_target_acc"])
+    late_val = float(mixed_log[-1]["val_acc"])
+    story.append(body(
+        f"<b>Timing.</b> At epoch {mixed['best_epoch']}, clean validation reaches "
+        f"{PCT(mixed['best_val_acc'])} while the network predicts "
+        f"{PCT(float(mixed_peak['noisy_target_acc']))} of the wrong targets. By epoch {mixed['epochs']}, "
+        f"wrong-target accuracy reaches {PCT(late_target)} and validation falls to {PCT(late_val)}. "
+        "Useful class structure is present early, while fitting of the wrong labels is still limited. "
+        "The trajectories can overlap, so the experiment does not establish an exact onset of memorization [2]."))
 
     # ================= Q2 =================
     story.append(h1("3&nbsp;&nbsp;Q2 — CNN vs MLP, and the spatial-structure hypothesis"))
@@ -308,7 +276,9 @@ def build(commit_hash):
     story.append(body(
         "<b>Fairness criterion (fixed before any test number was seen).</b> Identical split, seed, optimizer "
         "(Adam lr 1e-3), batch (256), epochs (40), no augmentation, no test-time tuning; parameter counts kept "
-        "within ±20%, with the CNN the <i>smaller</i> model, so the comparison, if anything, favours the MLP."))
+        "within ±20%. The CNN uses fewer parameters. The architectures may differ in per-update compute. "
+        "The CNN uses four 3×3 convolutions (strides 1/2/2/2, padding 1), followed by dense layers "
+        "4096–256–10. Both models use ReLUs in hidden layers."))
     story.append(simple_table(
         [["model", "params", "best val", "test acc"],
          ["q2-mlp (3072–512–256–10)", f"{q2a['q2-mlp']['params']:,}", PCT(q2a['q2-mlp']['best_val_acc']), PCT(q2a['q2-mlp']['test_acc'])],
@@ -332,29 +302,31 @@ def build(commit_hash):
         "any spatially coherent structure. Both models were retrained with the Q2(a) protocol; the same "
         "transformation is applied to the corresponding test images."))
     story.append(simple_table(
-        [["model", "params", "val (perm)", "test (perm)", "test (clean)"],
+        [["model", "params", "val (permuted)", "test (permuted)"],
          ["q2-mlp", f"{q2b['q2-mlp-permuted']['params']:,}", PCT(q2b['q2-mlp-permuted']['best_val_acc']),
-          PCT(q2b['q2-mlp-permuted']['test_acc']), PCT(q2b['q2-mlp-permuted']['clean_test_acc'])],
+          PCT(q2b['q2-mlp-permuted']['test_acc'])],
          ["q2-cnn", f"{q2b['q2-cnn-permuted']['params']:,}", PCT(q2b['q2-cnn-permuted']['best_val_acc']),
-          PCT(q2b['q2-cnn-permuted']['test_acc']), PCT(q2b['q2-cnn-permuted']['clean_test_acc'])]],
-        col_widths=[0.62*inch, 0.72*inch, 0.62*inch, 0.62*inch, 0.62*inch], fontsize=5.8))
+          PCT(q2b['q2-cnn-permuted']['test_acc'])]],
+        col_widths=[0.62*inch, 0.72*inch, 0.78*inch, 0.78*inch], fontsize=6.2))
     story.append(caption("<b>Table 4.</b> Q2(b) — same pixels, spatial structure destroyed. Test used the same "
                          "permutation as training."))
     story.append(figure(FIGS / "fig_q2_clean_vs_permuted.png", 2.9 * inch, 2.25 * inch))
     story.append(caption("<b>Figure 4.</b> Q2(b) — clean vs pixel-permuted test accuracy. The CNN's advantage "
                          "vanishes when spatial structure is removed; the MLP is essentially unchanged."))
     story.append(body(
-        "<b>Outcome vs prediction.</b> The prediction is borne out quantitatively: the MLP is unchanged "
-        "(0.5312 &gt; 0.5349, within noise), while the CNN collapses from 0.7063 to 0.5298 — below the MLP, with "
-        "nothing for its locality/weight-sharing prior to work with. Exactly the signature of a spatial "
-        "inductive bias, and far from what a generic “CNN optimizes better” explanation would predict."))
+        "<b>Outcome.</b> The MLP's test accuracy changes from "
+        f"{PCT(q2a['q2-mlp']['test_acc'], 2)} to {PCT(q2b['q2-mlp-permuted']['test_acc'], 2)}. "
+        f"The CNN drops from {PCT(q2a['q2-cnn']['test_acc'], 2)} "
+        f"to {PCT(q2b['q2-cnn-permuted']['test_acc'], 2)}. "
+        "The change is consistent with the CNN drawing a larger benefit from local image structure. "
+        "Per-channel normalization is applied after permuting the raw values, identically on all splits."))
 
     story.append(h2("3.3&nbsp;&nbsp;Q2(c): What does the CNN actually rely on? A translation sweep"))
     story.append(body(
         "<b>Two explanations for the CNN's behaviour:</b> <b>E1 — translation invariance:</b> the CNN wins because "
         "its weight sharing makes detectors approximately position-agnostic, so relocating the object does not "
         "matter. <b>E2 — weight sharing / local features:</b> the CNN wins because local parts are reused "
-        "efficiently, not because absolute position is irrelevant. <b>Experiment.</b> Zero-padded test-time "
+        "efficiently, not because absolute position is irrelevant. <b>Experiment.</b> Test-time shifts with zero padding after normalization (mean-color padding) are separate from the training intervention. We apply "
         "shifts of clean test images by k  in  {0,1,2,4,8} px along each of the four directions, applied to the "
         "Q2(a) models without retraining; accuracy (4-direction mean±std) and softmax-confidence of correct vs "
         "incorrect predictions are recorded for each k, together with per-direction accuracies and mean entropy."))
@@ -374,23 +346,17 @@ def build(commit_hash):
         col_widths=[0.48*inch, 0.52*inch, 0.52*inch, 0.52*inch, 0.52*inch, 0.72*inch], fontsize=5.5))
     story.append(caption("<b>Table 5.</b> Q2(c) — zero-padded translation sweep on the official test set."))
     story.append(body(
-        "<b>Error and confidence analysis.</b> Even a 1 px shift flips 9.9% of the MLP's correct predictions to "
-        "errors (2 px: 16.2%; 4 px: 25.5%; 8 px: 37.6%) vs the CNN's 5.5/10.3/20.5/41.1%. The absolute flip "
-        "rates cross over only at k = 8 — but by then the MLP is at 0.24 accuracy (near chance, with fewer "
-        "correct predictions left to lose), while the CNN still holds 0.36; the crossover reflects the asymmetry "
-        "of 'correct to lose', not weaker CNN robustness at moderate shifts (k ≤ 4, where the MLP loses "
-        "systematically more). Critically, the MLP is also <b>overconfidently wrong</b>: mean confidence on its "
-        "errors stays at 0.78 and barely moves under shift — it does not know it has failed. The CNN's "
-        "confidence on errors is lower and falls steadily (0.62), and its confidence on correct predictions "
-        "degrades gracefully (0.85→0.72). Outcome: E1 (translation invariance) is supported over E2 — both "
-        "explanations predict efficient locality, but only E1 predicts the observed small-shift robustness and "
-        "calibrated confidence. The CNN's advantage is <b>positional robustness built into the "
-        "architecture</b>, not a generic optimization head-start."))
-    story.append(body(
-        "<b>Q2 conclusion.</b> (a) A budget-matched CNN beats an MLP decisively; (b) the gap closes entirely "
-        "when spatial structure is destroyed without changing pixel values; (c) the CNN is robust to small "
-        "translations and degrades calibrated-confidence errors only at large shifts. All three experiments "
-        "converge on one mechanism: spatial inductive bias — locality + approximate translation invariance."))
+        "<b>Error and confidence analysis.</b> At a one-pixel shift, the CNN turns "
+        f"{PCT(q2c['q2-cnn']['1']['flip_to_error'])} of its originally correct predictions into errors, "
+        f"compared with {PCT(q2c['q2-mlp']['1']['flip_to_error'])} for the MLP. At eight pixels both lose "
+        f"accuracy (CNN {PCT(q2c['q2-cnn']['8']['acc'])}, MLP {PCT(q2c['q2-mlp']['8']['acc'])}). "
+        f"For the CNN, mean confidence on wrong predictions changes from {q2c['q2-cnn']['0']['conf_wrong']:.2f} "
+        f"to {q2c['q2-cnn']['8']['conf_wrong']:.2f}; for the MLP it changes from "
+        f"{q2c['q2-mlp']['0']['conf_wrong']:.2f} to {q2c['q2-mlp']['8']['conf_wrong']:.2f}. "
+        "These means describe confidence on errors; they do not measure calibration. "
+        "The CNN tolerates small shifts better, consistent with partial positional robustness. "
+        "Large shifts also crop image content, so this test cannot isolate the effect of position alone. "
+        "Together, the permutation and translation results support a contribution from spatial structure."))
 
     # ================= Q3 =================
     story.append(h1("4&nbsp;&nbsp;Q3 — Autoencoders and learned representations"))
@@ -427,7 +393,7 @@ def build(commit_hash):
     story.append(h2("4.2&nbsp;&nbsp;Q3(b): Denoising vs clean reconstruction for classification"))
     story.append(body(
         "<b>Corruption.</b> Additive Gaussian noise, sigma = 0.25, on [0,1] images, clipped to [0,1]; applied "
-        "identically in training (DAE inputs) and at test time. Chosen because it is a smooth, unstructured "
+        "with the same distribution during training and testing (fixed test draw, seed 999). The noise is an unstructured "
         "corruption a local, content-preserving reconstruction can plausibly undo. <b>DAE.</b> Same architecture "
         "as the selected clean AE; trained with noisy inputs and <i>clean</i> targets; identical training "
         f"budget; no class labels used. <b>Fixed classifier</b> = q2-cnn (Q2a), trained on clean labelled "
@@ -436,18 +402,18 @@ def build(commit_hash):
         [["condition (10,000 official test images)", "test acc"],
          ["1. clean images (reference)", PCT(q3b["test_acc_clean"])],
          ["2. noisy images, classified directly", PCT(q3b["test_acc_noisy_direct"])],
-         [f"3. noisy -&gt; clean AE (B={q3b['clean_ae_bottleneck']}) -&gt; CNN", PCT(q3b["test_acc_cleanae_recon"])],
-         [f"4. noisy -&gt; DAE (B={q3b['dae_bottleneck']}) -&gt; CNN", PCT(q3b["test_acc_dae_recon"])]],
+         [f"3. noisy → clean AE (B={q3b['clean_ae_bottleneck']}) → CNN", PCT(q3b["test_acc_cleanae_recon"])],
+         [f"4. noisy → DAE (B={q3b['dae_bottleneck']}) → CNN", PCT(q3b["test_acc_dae_recon"])]],
         col_widths=[2.45*inch, 0.7*inch], fontsize=6.0))
     story.append(caption(f"<b>Table 7.</b> Q3(b) — corruption: Gaussian sigma={q3b['noise_sigma']}. Reconstruction "
-                         f"MSE vs noisy inputs — clean AE: {q3b['clean_ae_test_mse_on_noisy']:.4f}, DAE: "
+                         f"MSE against clean targets on noisy inputs — clean AE: {q3b['clean_ae_test_mse_on_noisy']:.4f}, DAE: "
                          f"{q3b['dae_test_mse_on_noisy']:.4f}."))
     story.append(body(
         "<b>Does denoising recover what the classifier needs?</b> Compare condition 2 with 3/4. The DAE clearly "
         "helps (condition 4) and clearly beats the clean-AE baseline (condition 3): it denoises "
         f"({q3b['dae_test_mse_on_noisy']:.4f} vs {q3b['clean_ae_test_mse_on_noisy']:.4f} MSE against the clean "
         "targets) and restores class evidence the classifier can use — yet it does not fully restore clean-level "
-        "accuracy (70.6% vs 56.2%). Quantitatively, the DAE closes "
+        f"accuracy ({PCT(q3b['test_acc_clean'])} vs {PCT(q3b['test_acc_dae_recon'])}). The DAE closes "
         f"{100 * (q3b['test_acc_dae_recon'] - q3b['test_acc_noisy_direct']) / (q3b['test_acc_clean'] - q3b['test_acc_noisy_direct']):.0f}% "
         "of the corruption gap. <b>Verdict:</b> denoising recovers most, but not yet all, of the information "
         "the classifier needs; it beats both the noisy-direct baseline and the non-denoising autoencoder, "
@@ -458,32 +424,29 @@ def build(commit_hash):
                          "the corruption is largely undone with class-relevant structure preserved."))
     story.append(h2("4.3&nbsp;&nbsp;Q3(c): Is reconstruction quality = class information?"))
     story.append(body(
-        "<b>Protocol.</b> Encoders frozen (no fine-tuning); linear probe Linear(B-&gt;10) trained on the 45k train "
-        "representations of clean images; validation monitored during probing; official test evaluated once. "
-        "The DAE is additionally probed on noisy test images (its native input domain)."))
+        "<b>Protocol.</b> A fresh linear probe is trained for 30 epochs on each frozen encoder's "
+        "features from clean training images. The main comparison evaluates both reconstruction and "
+        "probe accuracy on the same clean test inputs. A separate noise stress test uses seed 260004."))
     rows = []
     for k, v in sorted(q3c.items(), key=lambda kv: kv[1]["bottleneck"]):
-        row = [k, str(v["bottleneck"]), f"{v['val_mse']:.4f}" if "val_mse" in v else "—",
-               PCT(v["probe_val_acc"]), PCT(v["probe_test_acc_clean"])]
-        rows.append(row)
+        rows.append([k, str(v["bottleneck"]), F4(v["val_mse"]), F4(v["test_mse"]),
+                     PCT(v["probe_val_acc"]), PCT(v["probe_test_acc_clean"])])
     story.append(simple_table(
-        [["encoder", "B", "val MSE", "probe val", "probe test (clean)"]] + rows,
-        col_widths=[0.82*inch, 0.38*inch, 0.62*inch, 0.68*inch, 0.82*inch], fontsize=5.9))
-    story.append(caption("<b>Table 8.</b> Q3(c) — frozen-encoder linear probes vs reconstruction quality. "
-                         f"DAE probe on noisy test images: {PCT(q3c[[k for k in q3c if k.startswith('dae')][0]]['probe_test_acc_noisy'])}."))
+        [["encoder", "B", "val MSE", "test MSE", "probe val", "probe test"]] + rows,
+        col_widths=[0.65*inch, 0.34*inch, 0.51*inch, 0.53*inch, 0.57*inch, 0.62*inch], fontsize=6.3))
+    dae = next(v for k, v in q3c.items() if k.startswith("dae"))
+    story.append(caption("<b>Table 8.</b> Clean-input reconstruction error and linear-probe accuracy. "
+                         f"On the separate noisy test inputs the DAE probe achieves {PCT(dae['probe_test_acc_noisy'])}."))
     story.append(figure(FIGS / "fig_q3c_probe_vs_mse.png", 2.75 * inch, 2.2 * inch))
-    story.append(caption("<b>Figure 10.</b> Q3(c) — probe accuracy vs test reconstruction MSE (lower-left is "
-                         "better). The two quantities do not ascend together."))
+    story.append(caption("<b>Figure 10.</b> Clean test-set reconstruction error and linear-probe accuracy. "
+                         "The preferred direction is up and to the left."))
+    best_ae = q3c[sel_key]
     story.append(body(
-        "<b>Do the two quantities agree?</b> Partially. Among the clean AEs they agree monotonically: "
-        "val MSE 0.0114 → 0.0026 → 0.0015 tracks probe test accuracy 0.373 → 0.417 → 0.475 — more capacity "
-        "reconstructs better and preserves linearly separable class structure en route. But the correspondence "
-        "breaks for the DAE: it reconstructs <i>worse</i> (its objective is denoising, not fidelity) yet encodes "
-        "the <i>most</i> class-linear information (probe test 0.515 clean, 0.443 under Gaussian noise) — because "
-        "its bottleneck is trained to preserve noise-invariant, label-relevant content rather than pixels. "
-        "Reconstruction error is therefore necessary-but-not-sufficient evidence of semantic content: selecting "
-        "on reconstruction alone (Q3a) picks capacity, not usefulness; the denoising objective yields "
-        "semantically cleaner features."))
+        "<b>Comparison.</b> Among clean AEs, greater capacity reduces test MSE and improves probe accuracy. "
+        f"The DAE achieves {PCT(dae['probe_test_acc_clean'])} probe accuracy at test MSE {F4(dae['test_mse'])}. "
+        f"The reconstruction-selected clean AE achieves {PCT(best_ae['probe_test_acc_clean'])} at "
+        f"MSE {F4(best_ae['test_mse'])}. The differing rankings show that pixel reconstruction fidelity "
+        "and class information available to a linear classifier measure different properties."))
 
     # ================= Q4 =================
     story.append(h1("5&nbsp;&nbsp;Q4 — Bonus: SVM and clustering on a fixed representation"))
@@ -526,74 +489,72 @@ def build(commit_hash):
         f"The official test set was evaluated <b>once</b>: "
         f"<b>test accuracy = {PCT(fin['test_acc'], 2)}</b> (train {PCT(fin['train_acc'])}, val {PCT(fin['val_acc'])}; "
         f"support vectors {fin['n_support_vectors']:,} = {PCT(fin['sv_fraction'])})."))
+    linear = [r for r in q4a["sweep"] if r["kernel"] == "linear"]
+    rbf = [r for r in q4a["sweep"] if r["kernel"] == "rbf"]
+    poly = [r for r in q4a["sweep"] if r["kernel"] == "poly"]
+    best_rbf = max(rbf, key=lambda row: row["val_acc"])
     story.append(body(
-        "<b>Under/overfitting as C grows.</b> For <b>linear</b>, validation accuracy <i>falls</i> monotonically "
-        "(0.411 at C=0.01 → 0.386/0.368/0.366/0.367) while training climbs to 0.997 at C=100 — the linear model "
-        "is already overfitting from C≥0.1; its best validation point is its first. For <b>RBF</b> the sweep "
-        "traces a clean arc: severe underfitting at small C (val 0.279 at C=0.01, every point a support vector) "
-        "→ a genuinely good regime (val 0.490 at C=1, 0.505 at C=10 — selected) → slight overfitting at C=100 "
-        "(val 0.500 with train = 100%). <b>Poly</b> underfits badly at small C (val 0.101 at C=0.01, chance "
-        "level), recovers steadily, but never challenges RBF (val 0.369 at C=100). Remarkably, the SV fraction "
-        "never falls below 0.81 anywhere and sits at ~0.97-1.00 for RBF/poly — the frozen AE representation is "
-        "hard to separate, and the SVM needs nearly every training point to pin the boundary. In every kernel, "
-        "selecting on training rather than validation would have chosen the largest C — the worst-generalising "
-        "point in the sweep."))
+        f"<b>Regularization.</b> For the linear kernel, training accuracy increases to "
+        f"{PCT(linear[-1]['train_acc'])} while validation falls from {PCT(linear[0]['val_acc'])} "
+        f"to {PCT(linear[-1]['val_acc'])}. RBF improves through C={best_rbf['C']:g} and then loses "
+        f"validation accuracy at C=100 while training approaches 100%. The cubic polynomial kernel "
+        f"underfits at low C ({PCT(poly[0]['val_acc'])} validation) and reaches "
+        f"{PCT(poly[-1]['val_acc'])} validation at C=100. A high support-vector fraction means many "
+        "training examples contribute to the solution. The training–validation gap is the evidence of overfitting."))
 
-    story.append(h2("5.2&nbsp;&nbsp;Q4(b): The difficult pairs — support vectors vs boundary test points"))
+    story.append(h2("5.2&nbsp;&nbsp;Q4(b): The three most confused pairs"))
     story.append(body(
-        "Difficult pairs are chosen data-driven from the <b>test</b> confusion matrix of the selected SVM "
-        "(bidirectional mass n(i-&gt;j)+n(j-&gt;i), three largest). For each pair (i,&nbsp;j), in the same frozen "
-        "representation: training support vectors with smallest margin |f<sub>i</sub>-f<sub>j</sub>| are shown, "
-        "and official test examples closest to the same boundary (in the pair-specific one-vs-one margin "
-        "|f<sub>i</sub>-f<sub>j</sub>|, regardless of true class - i.e. exactly where the model is torn "
-        "between the two pair classes; an off-pair class such as frog can sit there when both pair scores are "
-        "near zero)."))
+        "Rank unordered class pairs by the sum of the two off-diagonal test confusion counts. "
+        "For each of the top three pairs, extract the corresponding one-vs-one decision score "
+        "from the selected multiclass SVM. Among training support vectors with a nonzero dual "
+        "coefficient for that pair and among test examples whose true label is in the pair, "
+        "show the six with the smallest absolute score. A positive score votes for the first class. "
+        "The predicted labels and test errors in Table 10 and Fig. 13 use the full multiclass prediction."))
     pair_rows = []
     for p in q4b["pairs"]:
-        pair_rows.append([" vs ".join(p["pair"]), str(p["cm_ij"] + p["cm_ji"]),
+        pair_rows.append([" / ".join(p["pair"]), str(p["confusion_mass_test"]),
                           f"{p['near_boundary_test_errors']}/{p['near_boundary_test_n']}",
-                          PCT(p["pair_error_rate_test"]), f"{p['centroid_distance']:.2f}",
-                          f"{p['within_class_radius'][0]:.2f} / {p['within_class_radius'][1]:.2f}"])
+                          str(p["pair_support_count"]), f"{p['centroid_distance']:.1f}",
+                          " / ".join(f"{radius:.1f}" for radius in p["within_class_radius"])])
     story.append(simple_table(
-        [["pair (test)", "conf. mass", "near-bdry err", "pair err rate", "centroid d", "within R (i/j)"]]
-        + pair_rows,
-        col_widths=[0.72*inch, 0.42*inch, 0.55*inch, 0.56*inch, 0.46*inch, 0.66*inch], fontsize=5.8))
-    story.append(caption("<b>Table 10.</b> Q4(b) — hard pairs: boundary tests and feature-space geometry; "
-                         "near-boundary errors counted among the 6 closest-to-boundary test points."))
-    _fig_letter = ["a", "b", "c"]
-    for _i, p in enumerate(q4b["pairs"]):
-        fig_name = f"q4_pair_{p['pair_indices'][0]}_{p['pair_indices'][1]}.png"
-        story.append(figure(FIGS / fig_name, COL_W, 1.65 * inch))
-        story.append(caption(f"<b>Figure 13{_fig_letter[_i]}.</b> Q4(b) — {p['pair'][0]} vs {p['pair'][1]}: top = 6 training "
-                             f"support vectors with smallest |f<sub>i</sub>-f<sub>j</sub>|; bottom = 6 "
-                             f"boundary-closest official test examples (margin d shown). "
-                             f"{p['near_boundary_test_errors']}/{p['near_boundary_test_n']} of the boundary test "
-                             "points are errors."))
-    story.append(body(
-        "<b>Reading the geometry.</b> In each selected pair, bidirectional confusion is carried by test points "
-        "whose margins hover around zero, and most boundary-closest points are misclassified; the frozen "
-        "representation does not separate these classes into disjoint regions — the decision boundary slices a "
-        "continuous structure that contains off-axis members of both classes (the images are visually the "
-        "ambiguous ones). The near-boundary support vectors pin the boundary exactly where the test set is "
-        "densest and most contested."))
-
-    # ---- near-boundary inspection table (decision scores, errors)
+        [["pair", "mutual err.", "near err.", "pair SVs", "centroid d", "RMS radii"]] + pair_rows,
+        col_widths=[0.87*inch, 0.49*inch, 0.46*inch, 0.47*inch, 0.48*inch, 0.48*inch], fontsize=6.1))
+    story.append(caption("<b>Table 10.</b> Pair confusion, multiclass errors among the six nearest "
+                         "test points, and geometry in standardized bottleneck space."))
+    for suffix, p in zip("abc", q4b["pairs"]):
+        i, j = p["pair_indices"]
+        story.append(figure(FIGS / f"q4_pair_{i}_{j}.png", COL_W, 1.65 * inch))
+        story.append(caption(f"<b>Figure 13{suffix}.</b> {' vs '.join(p['pair'])}. Top: active training SVs. "
+                             "Bottom: near-boundary test images. Titles give the pair score and true → predicted class."))
+    sv_text = " ".join(
+        f"<b>{'/'.join(p['pair'])}</b> (" + ", ".join(
+            f"{row['d_pair']:+.2e}" for row in p["train_support_vectors"]
+        ) + ")." for p in q4b["pairs"]
+    )
+    story.append(body("<b>Training support vectors, signed scores in figure order.</b> " + sv_text))
     nb_rows = []
     for p in q4b["pairs"]:
         for r in p["test_examples"]:
-            outcome = "err" if r["pred"] != r["true"] else "ok"
-            nb_rows.append([" vs ".join(p["pair"]), r["true"], r["pred"],
-                            f"{r['d_pair']:+.1e}", outcome])
+            nb_rows.append([" / ".join(p["pair"]), r["true"], r["pred"], f"{r['d_pair']:+.3e}"])
     story.append(simple_table(
-        [["pair", "true", "pred", "d (f_i - f_j)", "outcome"]] + nb_rows,
-        col_widths=[0.83*inch, 0.72*inch, 0.72*inch, 0.72*inch, 0.35*inch], fontsize=5.2))
-    story.append(caption("<b>Table 14.</b> Q4(b) — the six boundary-closest official test examples per pair, "
-                         "with their one-vs-one decision margins d and outcomes (err = misclassified)."))
+        [["pair", "true", "prediction", "OvO score"]] + nb_rows,
+        col_widths=[1.05*inch, 0.66*inch, 0.74*inch, 0.80*inch], fontsize=6.2))
+    story.append(caption("<b>Table 11.</b> Official test examples nearest each pairwise boundary."))
+    comparisons = ", ".join(
+        f"{'/'.join(p['pair'])}: {p['near_boundary_test_errors']}/{p['near_boundary_test_n']} "
+        f"near the boundary vs {PCT(p['pair_error_rate_test'])} across pair members" for p in q4b["pairs"]
+    )
     story.append(body(
-        "<b>Errors at the boundary.</b> In all three pairs, most of the boundary-closest test points are "
-        "errors (5/6, 5/6, 4/6) — test error concentrates exactly where the support vectors pin the margin; "
-        "points with |d| below ~1e-3 are misclassified at a rate far above the overall 49.7%. The SVM fails on "
-        "hard-class images that are geometrically equidistant from the competing centroids."))
+        f"<b>Errors and geometry.</b> {comparisons}. Centroid separations are smaller than the "
+        "within-class RMS radii for each shown pair. The feature groups have broad spread relative "
+        "to their mean separation. A score near zero only describes the pairwise classifier's vote, "
+        "and other pairwise votes can determine the multiclass result."))
+    story.append(body(
+        "<b>Image examples.</b> The cat misclassified as dog is a tight face crop, while two dogs "
+        "misclassified as horse are side-on, full-body views. The automobile misclassified as truck "
+        "has a boxy silhouette and strong two-tone contrast. The deer misclassified as bird is a small "
+        "brown subject against a vivid green field. These examples illustrate variation in framing "
+        "and background near a boundary, without identifying which pixels caused a decision."))
 
     story.append(h2("5.3&nbsp;&nbsp;Q4(c): Label-free clustering vs the SVM"))
     sil_txt = ", ".join(f"k={k}: {v:+.4f}" for k, v in q4c["val_silhouette"].items())
@@ -606,7 +567,7 @@ def build(commit_hash):
         f"1,500-sample validation subsample (seed {SEED}): {meth_txt} → choose "
         f"<b>{q4c['method']}</b>. <b>k</b> in {{10, 20}} on the same subsample: {sil_txt} → "
         f"choose <b>k = {q4c['k_chosen_by_validation']}</b>. "
-        "Final model fit on <b>all 45,000 train representations</b>; test representations are assigned without "
+        "The final fit uses all 45,000 train representations (8 initializations for MiniBatchKMeans); test representations are assigned without "
         "labels; test labels used only afterwards, once, for evaluation."))
     story.append(simple_table(
         [["metric (official test, after assignment)", "value"],
@@ -617,34 +578,32 @@ def build(commit_hash):
          ["acc. after majority cluster-&gt;class map", PCT(q4c["test_acc_after_majority_mapping"])],
          ["SVM test accuracy (reference)", PCT(q4c["svm_test_acc"])]],
         col_widths=[2.2*inch, 0.8*inch], fontsize=6.0))
-    story.append(caption("<b>Table 11.</b> Q4(c) — test-set clustering evaluation (labels used only after "
+    story.append(caption("<b>Table 12.</b> Q4(c) — test-set clustering evaluation (labels used only after "
                          "assignment); SVM reference point in the last row."))
     cont = q4c["contingency_clusters_x_classes"]
     abbrev = ["plane", "car", "bird", "cat", "deer", "dog", "frog", "horse", "ship", "truck"]
-    hdr = ["cluster -&gt; majority"] + abbrev
-    full = [hdr] + [[f"c{i} -&gt; {q4c['cluster_to_class_map'][i]}"] + [str(v) for v in row]
-                    for i, row in enumerate(cont)]
+    hdr = ["cluster / majority"] + abbrev
+    full = [hdr]
+    for i, row in enumerate(cont):
+        majority = q4c["cluster_to_class_map"][i] if sum(row) else "empty"
+        full.append([f"c{i} / {majority}", *map(str, row)])
     story.append(simple_table(full, col_widths=[0.95*inch] + [0.222*inch]*10, fontsize=4.6))
-    story.append(caption("<b>Table 12.</b> Q4(c) — test cluster-&gt;class contingency (rows = clusters named by "
+    story.append(caption("<b>Table 13.</b> Q4(c) — test cluster-&gt;class contingency (rows = clusters named by "
                          "their majority class; columns = classes, abbreviated)."))
-    story.append(body(
-        "<b>Classification vs clustering — where they disagree (quantitative).</b> Label-free clustering on "
-        "this frozen representation recovers almost nothing: silhouette ≈ 0 for every method and k tried, most "
-        "clusters are empty or near-empty (Table 12), ARI = 0.041 (essentially chance), purity = 0.189, and "
-        "majority-mapped accuracy = 18.9% vs the SVM's 50.3%. Per class (Table 13): the SVM wins decisively "
-        "where decisions are margin-separable (automobile 63.0% vs 0.0%; bird 38.6% vs 0.0%; frog 54.7% vs "
-        "0.0%; ship 63.5% vs 0.8%), while clustering only finds an <i>airplane catch-all cluster</i> (majority-"
-        "map recalls airplane at 74.8% — well above the SVM's 57.4%) — appearance similarity, not semantics "
-        "(it swallows anything sky/gray + elongated: plane, some trucks/ships/birds). So the two methods "
-        "actively disagree on both directions: classes the SVM handles but clusters lose entirely, and one "
-        "class where the cluster ‘wins’ by accident of a dominant lookalike mode."))
     _svm_map, _cl_map = q4c["per_class_recall_svm"], q4c["per_class_recall_clustering"]
+    story.append(body(
+        f"<b>Quantitative disagreement.</b> For automobile, SVM recall is {PCT(_svm_map['automobile'])}, "
+        f"while test-majority-mapped cluster recall is {PCT(_cl_map['automobile'])}. For airplane the "
+        f"corresponding numbers are {PCT(_svm_map['airplane'])} and {PCT(_cl_map['airplane'])}. "
+        "The contingency table shows how mixed-class clusters and shared majority labels can yield these "
+        "differences. Majority mapping uses test labels for descriptive evaluation, and its accuracy "
+        "equals purity. ARI and NMI compare assignments with labels without that mapping."))
     _pc_rows = [[c, PCT(_svm_map[c]), PCT(_cl_map[c]), f"{100 * (_svm_map[c] - _cl_map[c]):+.1f}"]
                 for c in _cl_map]
     story.append(simple_table(
         [["class", "SVM recall", "KMeans recall", "Δ (pts)"]] + _pc_rows,
         col_widths=[1.15*inch, 0.72*inch, 0.78*inch, 0.62*inch], fontsize=5.8))
-    story.append(caption("<b>Table 13.</b> Q4(c) — per-class test recall: supervised SVM vs label-free KMeans "
+    story.append(caption("<b>Table 14.</b> Q4(c) — per-class test recall: supervised SVM vs label-free MiniBatchKMeans "
                          "(majority-mapped clusters). Positive Δ favours the SVM."))
 
     # ================= reproducibility =================
@@ -654,19 +613,19 @@ def build(commit_hash):
         "scikit-learn 1.7.2; <font face='Courier' size='6.5'>requirements.txt</font> pins everything; "
         "<font face='Courier' size='6.5'>README.md</font> lists the exact command sequence. Split indices and the "
         "pixel permutation are committed (<font face='Courier' size='6.5'>split/</font>). Every run logs "
-        "per-epoch metrics (<font face='Courier' size='6.5'>results/*/log.csv</font>) and a machine-readable "
-        "<font face='Courier' size='6.5'>metrics.json</font>; the report numbers equal those files."))
+        "per-epoch metrics under results/ for the classifier and autoencoder training runs. Probe and bonus "
+        "results are stored as JSON and the full SVM sweep is stored as CSV."))
     story.append(body(
         "<b>Reused models (identified):</b> <b>q2-cnn</b> — introduced in Q2(a), reused unchanged as the fixed "
         "classifier of Q3(b); <b>validation-selected clean AE</b> (results/q3/ae-*) — introduced in Q3(a), reused "
         "as the Q3(b) baseline, the probe backbone of Q3(c), and the fixed representation of Q4(a–c); the SVM "
         "selected in Q4(a) — reused for the Q4(b) inspection and the Q4(c) reference. No model weights, logits "
-        "or test predictions are shared between any other questions; figures are regenerated by "
+        "or test predictions are shared between any other questions; metric plots are regenerated by "
         "<font face='Courier' size='6.5'>scripts/make_figures.py</font>."))
     reuse_rows = [
         ["q2-cnn", "Q2(a)", "Q3(b) fixed classifier; Q2(c) analysis"],
-        ["validation-selected clean AE", "Q3(a)", "Q3(b) baseline; Q3(c) probe; Q4 representation"],
-        ["q2-c permutation (split file)", "Q2(b)", "Q2(b) test evaluation only"],
+        ["validation-selected clean AE", "Q3(a)", "Q3(b–c); Q4 representation"],
+        ["pixel permutation (split file)", "Q2(b)", "Q2(b) test evaluation only"],
         ["selected SVM (Q4a)", "Q4(a)", "Q4(b) hard-pair inspection; Q4(c) reference"],
         ["fixed stratified 9k SVM subset", "Q4(a)", "every SVM comparison, incl. Q4(b)"],
     ]
@@ -675,54 +634,13 @@ def build(commit_hash):
         col_widths=[1.20*inch, 0.60*inch, 1.50*inch], fontsize=5.7, align_center=False))
     story.append(caption("<b>Table 15.</b> Reused models/components and where they first appeared."))
 
-    # ================= deliverables checklist =================
-    story.append(h1("7&nbsp;&nbsp;Deliverables cross-check"))
+    story.append(h1("7&nbsp;&nbsp;Conclusion"))
     story.append(body(
-        "Every deliverable required by the assignment is listed below with its location. All accuracy figures "
-        "quoted in the report are official-test numbers unless explicitly marked validation; all selections used "
-        "validation only."))
-    dlv = [
-        ["§", "deliverable (assignment)", "where"],
-        ["Q1a", "model specs + parameter counts; train/val curves; fair-comparison justification; final test acc for selected models; interpretation",
-         "Table 1; Fig. 1; §2.1"],
-        ["Q1b", "memory experiment: setting where fit exceeds generalisation; trajectory-based argument for when useful structure is learned; final test acc",
-         "Table 2; Figs. 2–3; §2.2"],
-        ["Q2a", "one CNN one MLP, fairness criterion defined before results; one specific reason for the difference",
-         "Table 3; §3.1"],
-        ["Q2b", "same pixel values, spatial structure destroyed (fixed permutation); expected stated; test of the explanation",
-         "Table 4; Fig. 4; §3.2"],
-        ["Q2c", "further experiment distinguishing two explanations; both errors and confidence analysed",
-         "Table 5; Fig. 5; §3.3"],
-        ["Q3a", "three bottleneck sizes; params + validation recon error; selection by reconstruction only, justified",
-         "Table 6; Figs. 6–8; §4.1"],
-        ["Q3b", "corruption choice + denoising protocol; test accuracy on corrupted, clean-AE and DAE recon; decision",
-         "Table 7; §4.2"],
-        ["Q3c", "frozen-encoder class-information probe vs reconstruction quality; agreement decision",
-         "Table 8; Fig. 10; §4.3"],
-        ["Q4a", "≥5 C spanning ≥3 orders; ≥3 kernels (RBF incl.); train/val acc + SV fraction for every setting; validation-only selection; test once; under/overfit explained; sweep table + plot",
-         "Table 9; Figs. 11–12; §5.1"],
-        ["Q4b", "≥3 difficult pairs; train SVs + boundary test images with decision scores; relation to test errors + geometry",
-         "Table 10; Figs. 13a–c; §5.2"],
-        ["Q4c", "same fixed representation; clustering w/o labels; k chosen on train/val only; test ARI/NMI; contingency; ≥1 classification-vs-clustering disagreement",
-         "Tables 11–13; §5.3"],
-    ]
-    story.append(simple_table(dlv, col_widths=[0.42*inch, 2.28*inch, 0.68*inch], fontsize=4.9, align_center=False))
-    story.append(caption("<b>Table 16.</b> Assignment deliverable → location map."))
-
-    # ================= conclusion =================
-    story.append(h1("8&nbsp;&nbsp;Conclusion"))
-    story.append(body(
-        "Under one fixed, seeded 45k/5k split and a test-once-per-final-configuration rule, the experiments "
-        "support a consistent picture: MLPs fit CIFAR10 by memorisation — not underfitting — with useful "
-        "structure learned before memorisation begins; a parameter- and budget-matched CNN wins because of "
-        "spatial inductive bias (isolated by the permutation control and translation-sweep confidence analysis); "
-        "convolutional autoencoders show a capacity&lt;-&gt;reconstruction trade-off, but denoising — not raw "
-        "reconstruction — is what a classifier needs, and frozen probes show reconstruction error does not "
-        "directly measure class information; and on a fixed frozen representation, a validation-selected SVM "
-        "generalises moderately (50.3%) while label-free clustering recovers almost no class structure (ARI "
-        "0.04) — the supervised decision-boundary geometry does not emerge unsupervised from this "
-        "representation. All code, logs, figures, the saved split and the exact reproduction commands are in "
-        "the repository."))
+        "Learning usable class structure and fitting wrong training targets follow different trajectories. "
+        "The spatial interventions explain part of the CNN advantage. Denoising recovers much of the "
+        "classification performance lost to Gaussian noise, and probe accuracy distinguishes encoders "
+        "whose reconstruction scores would rank them differently. The frozen bottleneck supports "
+        "moderate supervised classification and weak recovery of CIFAR10 classes by clustering."))
 
     # ================= references =================
     story.append(h1("References"))
@@ -736,32 +654,53 @@ def build(commit_hash):
 
     # ================= document assembly =================
     doc = BaseDocTemplate(
-        str(REPO / "report" / "main.pdf"),
+        str(output),
         pagesize=letter,
         leftMargin=ML, rightMargin=MR, topMargin=MT, bottomMargin=MB,
         title="ML Assignment 3 — Devinder (P26AI0004)",
         author="Devinder",
+        invariant=1,
     )
-    col_y = MB
-    title_frame = Frame(ML, MB + COL_H - 3.15 * inch, PAGE_W - ML - MR, 3.15 * inch,
-                        id="titletop", showBoundary=0)
-    f_left_p1 = Frame(ML, col_y, COL_W, COL_H - 3.15 * inch, id="p1left", showBoundary=0)
-    f_right_p1 = Frame(ML + COL_W + GUTTER, col_y, COL_W, COL_H - 3.15 * inch, id="p1right", showBoundary=0)
-    f_left = Frame(ML, col_y, COL_W, COL_H, id="left", showBoundary=0)
-    f_right = Frame(ML + COL_W + GUTTER, col_y, COL_W, COL_H, id="right", showBoundary=0)
+    title_height = 1.45 * inch
 
+    def frame(x, y, width, height, name):
+        return Frame(x, y, width, height, id=name, leftPadding=0, rightPadding=0,
+                     topPadding=0, bottomPadding=0)
+
+    def columns(height):
+        return [frame(ML, MB, COL_W, height, "left"),
+                frame(ML + COL_W + GUTTER, MB, COL_W, height, "right")]
+
+    title_frame = frame(ML, MB + COL_H - title_height, 2 * COL_W + GUTTER,
+                        title_height, "title")
     doc.addPageTemplates([
-        PageTemplate(id="first", frames=[title_frame, f_left_p1, f_right_p1], onPage=on_page),
-        PageTemplate(id="later", frames=[f_left, f_right], onPage=on_page),
+        PageTemplate(id="first", frames=[title_frame, *columns(COL_H - title_height)]),
+        PageTemplate(id="later", frames=columns(COL_H)),
     ])
-    doc.build(story)
+    blocks = []
+    i = 0
+    while i < len(story):
+        item = story[i]
+        following = story[i + 1] if i + 1 < len(story) else None
+        if isinstance(item, (Image, Table)) and getattr(following, "style", None) is S["caption"]:
+            blocks.append(KeepTogether([item, following]))
+            i += 2
+        else:
+            blocks.append(item)
+            i += 1
+    doc.build(blocks)
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--commit", default="COMMIT_HASH_PLACEHOLDER")
+    ap.add_argument("--commit", required=True)
+    ap.add_argument("--repo-url", default=REPO_URL)
+    ap.add_argument("--output", type=Path, default=REPO / "report" / "main.pdf")
     args = ap.parse_args()
-    build(args.commit)
+    if not re.fullmatch(r"[0-9a-f]{40}", args.commit):
+        ap.error("--commit must be a full 40-character Git commit hash")
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    build(args.commit, args.repo_url, args.output)
 
 
 if __name__ == "__main__":

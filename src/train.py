@@ -46,7 +46,7 @@ def predict_probs(model, loader, device):
 
 def train_classifier(model, train_loader, val_loader, device, *,
                      epochs, lr=1e-3, weight_decay=0.0, log_path,
-                     ckpt_path=None, optimizer=None):
+                     ckpt_path=None, optimizer=None, noisy_loader=None):
     """Standard classifier training with per-epoch train/val logging.
 
     Saves the checkpoint with the best VALIDATION accuracy (all architecture /
@@ -62,9 +62,11 @@ def train_classifier(model, train_loader, val_loader, device, *,
     loss_fn = nn.CrossEntropyLoss()
 
     fieldnames = ["epoch", "train_loss", "train_acc", "val_loss", "val_acc", "lr", "elapsed_s"]
+    if noisy_loader is not None:
+        fieldnames.append("noisy_target_acc")
     best_val, t0 = -1.0, time.time()
     with open(log_path, "w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=fieldnames)
+        w = csv.DictWriter(f, fieldnames=fieldnames, lineterminator="\n")
         w.writeheader()
         for epoch in range(1, epochs + 1):
             model.train()
@@ -86,6 +88,8 @@ def train_classifier(model, train_loader, val_loader, device, *,
                    "val_loss": val["loss"], "val_acc": val["acc"],
                    "lr": optimizer.param_groups[0]["lr"],
                    "elapsed_s": round(time.time() - t0, 1)}
+            if noisy_loader is not None:
+                row["noisy_target_acc"] = evaluate(model, noisy_loader, device, loss_fn)["acc"]
             w.writerow(row)
             f.flush()
             print(f"epoch {epoch:3d} | train_loss {row['train_loss']:.4f} "
