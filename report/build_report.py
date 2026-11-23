@@ -113,7 +113,7 @@ def read_log(name):
     with open(RESULTS / name / "log.csv") as f:
         return list(csv.DictReader(f))
 
-PCT = lambda x, d=1: f"{100 * x:.{d}f}%"
+PCT = lambda x, d=2: f"{100 * x:.{d}f}%"
 F4 = lambda x: f"{x:.4f}"
 REPO_URL = "https://github.com/devinder-research/ml-assignment3"
 SEED = "260004"
@@ -152,8 +152,8 @@ def build(commit_hash, repo_url, output):
     story.append(Paragraph("<b>Abstract</b>", st("abstract_head", fontSize=11,
                                                  alignment=TA_CENTER)))
     story.append(body(
-        "<i>We compare classifiers and representations on a fixed CIFAR10 split. A large training–validation "
-        "gap explains the baseline MLP's low accuracy. Under mixed labels, validation improves early and "
+        "<i>We compare classifiers and representations on a fixed CIFAR10 split. The baseline MLP shows a "
+        "large training–validation gap. Under mixed labels, validation improves early and "
         "then falls as the MLP fits incorrect targets. A CNN achieves higher clean accuracy and loses much "
         "of the advantage when the pixels are permuted. Denoising improves the fixed CNN's accuracy on "
         "corrupted inputs and frozen probes show that reconstruction error and class information rank "
@@ -177,9 +177,9 @@ def build(commit_hash, repo_url, output):
         "same optimizer, with 400 epochs for the 45k conditions, 300 for the 4.5k random-label probe and 60 for the mixed-label control). "
         "Autoencoders: Adam lr 1e-3, 40 epochs, batch 128, "
         "MSE loss on [0,1] images. Linear probes: Adam lr 1e-3, 30 epochs, batch 1024, on <i>frozen</i> "
-        "encoders. SVMs: StandardScaler fit on the 9,000-sample SVM subset only. Seeds are fixed to 260004 for "
-        "torch/numpy/random throughout; every run logs per-epoch train/validation metrics to "
-        "<font face='Courier' size='6.5'>results/*/log.csv</font> and is reproducible from a clean checkout."))
+        "encoders. The SVM scaler uses the 9,000 training examples. The split and model initialization use seed "
+        "260004. Sampling and corruption use fixed seeds documented in the experiment scripts. Classifier and "
+        "autoencoder training curves are logged under <font face='Courier' size='6.5'>results/</font>."))
     story.append(body(
         "<b>Reuse.</b> <b>q2-cnn</b> (Q2a) is reused as the fixed CNN classifier of Q3(b). The "
         "validation-selected clean AE of Q3(a) is reused as the Q3(b) baseline, the frozen probe backbone of "
@@ -226,7 +226,7 @@ def build(commit_hash, repo_url, output):
         f"<b>Evidence.</b> The baseline ends at {PCT(base_last)} train and "
         f"{PCT(q1a['mlp-base']['best_val_acc'])} peak validation accuracy. That gap supports "
         f"overfitting over underfitting for this baseline. Regularization reduces final train accuracy "
-        f"to {PCT(reg_last)} and changes peak validation accuracy by {val_gain:+.1f} percentage points. "
+        f"to {PCT(reg_last)} and changes peak validation accuracy by {val_gain:+.2f} percentage points. "
         "The low-capacity diagnostic also develops a large generalization gap. Q1 establishes the "
         "gap. The permutation intervention in Q2 examines the separate hypothesis about spatial structure."))
 
@@ -244,7 +244,7 @@ def build(commit_hash, repo_url, output):
          ["random (4.5k)", f"{PCT(q1b['random_4k']['best_val_acc'])} (ep {q1b['random_4k']['best_epoch']})", PCT(q1b['random_4k']['test_acc'])],
          ["mixed (4.5k)", f"{PCT(mixed['best_val_acc'])} (ep {mixed['best_epoch']})", PCT(mixed['test_acc'])]],
         col_widths=[1.05*inch, 1.3*inch, 0.65*inch], fontsize=6.0))
-    story.append(caption("<b>Table 2.</b> Q1(b) — memorisation setting, final numbers (curves in Fig. 2)."))
+    story.append(caption("<b>Table 2.</b> Q1(b) — final results. See Figs. 2 and 3 for trajectories."))
     story.append(figure(FIGS / "fig_q1b_memorization.png", COL_W, 2.15 * inch))
     rand45 = float(read_log("q1/q1b-random")[-1]["train_acc"])
     rand_small = float(read_log("q1/q1b-random_4k")[-1]["train_acc"])
@@ -284,7 +284,8 @@ def build(commit_hash, repo_url, output):
          ["q2-mlp (3072–512–256–10)", f"{q2a['q2-mlp']['params']:,}", PCT(q2a['q2-mlp']['best_val_acc']), PCT(q2a['q2-mlp']['test_acc'])],
          ["q2-cnn (conv 32-64-128-256)", f"{q2a['q2-cnn']['params']:,}", PCT(q2a['q2-cnn']['best_val_acc']), PCT(q2a['q2-cnn']['test_acc'])]],
         col_widths=[1.35*inch, 0.78*inch, 0.62*inch, 0.55*inch], fontsize=5.9))
-    story.append(caption("<b>Table 3.</b> Q2(a) — the fair comparison (the CNN uses 16% fewer parameters)."))
+    param_reduction = 1 - q2a["q2-cnn"]["params"] / q2a["q2-mlp"]["params"]
+    story.append(caption(f"<b>Table 3.</b> Q2(a) — the CNN uses {PCT(param_reduction)} fewer parameters."))
     story.append(body(
         "<b>Result.</b> The CNN exceeds the MLP on validation and on the official test set by a large margin "
         f"({PCT(q2a['q2-cnn']['test_acc'])} vs {PCT(q2a['q2-mlp']['test_acc'])}). <b>Proposed specific reason:</b> "
@@ -328,8 +329,8 @@ def build(commit_hash, repo_url, output):
         "matter. <b>E2 — weight sharing / local features:</b> the CNN wins because local parts are reused "
         "efficiently, not because absolute position is irrelevant. <b>Experiment.</b> Test-time shifts with zero padding after normalization (mean-color padding) are separate from the training intervention. We apply "
         "shifts of clean test images by k  in  {0,1,2,4,8} px along each of the four directions, applied to the "
-        "Q2(a) models without retraining; accuracy (4-direction mean±std) and softmax-confidence of correct vs "
-        "incorrect predictions are recorded for each k, together with per-direction accuracies and mean entropy."))
+        "Q2(a) models without retraining. Table 5 reports averages over the four directions for nonzero shifts. "
+        "The logs also record per-direction accuracies, accuracy standard deviations and mean entropy."))
     story.append(figure(FIGS / "fig_q2c_translation.png", COL_W, 2.05 * inch))
     story.append(caption("<b>Figure 5.</b> Q2(c) — translation sweep. Left: accuracy vs shift; middle: mean "
                          "confidence of correct (solid) and incorrect (dashed) predictions; right: flip-to-error "
@@ -338,9 +339,9 @@ def build(commit_hash, repo_url, output):
     for k in ["0", "1", "2", "4", "8"]:
         cnn_rows.append([f"k = {k}",
                          PCT(q2c["q2-cnn"][k]["acc"]), PCT(q2c["q2-mlp"][k]["acc"]),
-                         f"{q2c['q2-cnn'][k]['flip_to_error']:.3f}",
-                         f"{q2c['q2-mlp'][k]['flip_to_error']:.3f}",
-                         f"{q2c['q2-cnn'][k]['conf_correct']:.2f} / {q2c['q2-cnn'][k]['conf_wrong']:.2f}"])
+                         PCT(q2c["q2-cnn"][k]["flip_to_error"]),
+                         PCT(q2c["q2-mlp"][k]["flip_to_error"]),
+                         f"{q2c['q2-cnn'][k]['conf_correct']:.3f} / {q2c['q2-cnn'][k]['conf_wrong']:.3f}"])
     story.append(simple_table(
         [["shift k", "CNN acc", "MLP acc", "CNN flip", "MLP flip", "CNN conf corr/wrong"]] + cnn_rows,
         col_widths=[0.48*inch, 0.52*inch, 0.52*inch, 0.52*inch, 0.52*inch, 0.72*inch], fontsize=5.5))
@@ -350,9 +351,9 @@ def build(commit_hash, repo_url, output):
         f"{PCT(q2c['q2-cnn']['1']['flip_to_error'])} of its originally correct predictions into errors, "
         f"compared with {PCT(q2c['q2-mlp']['1']['flip_to_error'])} for the MLP. At eight pixels both lose "
         f"accuracy (CNN {PCT(q2c['q2-cnn']['8']['acc'])}, MLP {PCT(q2c['q2-mlp']['8']['acc'])}). "
-        f"For the CNN, mean confidence on wrong predictions changes from {q2c['q2-cnn']['0']['conf_wrong']:.2f} "
-        f"to {q2c['q2-cnn']['8']['conf_wrong']:.2f}; for the MLP it changes from "
-        f"{q2c['q2-mlp']['0']['conf_wrong']:.2f} to {q2c['q2-mlp']['8']['conf_wrong']:.2f}. "
+        f"For the CNN, mean confidence on wrong predictions changes from {q2c['q2-cnn']['0']['conf_wrong']:.3f} "
+        f"to {q2c['q2-cnn']['8']['conf_wrong']:.3f}; for the MLP it changes from "
+        f"{q2c['q2-mlp']['0']['conf_wrong']:.3f} to {q2c['q2-mlp']['8']['conf_wrong']:.3f}. "
         "These means describe confidence on errors; they do not measure calibration. "
         "The CNN tolerates small shifts better, consistent with partial positional robustness. "
         "Large shifts also crop image content, so this test cannot isolate the effect of position alone. "
@@ -464,7 +465,7 @@ def build(commit_hash, repo_url, output):
     sweep_rows = []
     for r in q4a["sweep"]:
         sweep_rows.append([r["kernel"], f"{r['C']:g}", PCT(r["train_acc"]), PCT(r["val_acc"]),
-                           f"{r['sv_fraction']:.3f}", f"{r['fit_seconds']:.0f}"])
+                           f"{r['sv_fraction']:.4f}", f"{r['fit_seconds']:.0f}"])
     story.append(simple_table(
         [["kernel", "C", "train", "val", "SV frac", "fit s"]] + sweep_rows,
         col_widths=[0.55*inch, 0.45*inch, 0.48*inch, 0.48*inch, 0.52*inch, 0.42*inch], fontsize=5.6))
@@ -561,21 +562,19 @@ def build(commit_hash, repo_url, output):
     meth_scores = q4c.get("method_candidates_val_silhouette", {})
     meth_txt = ", ".join(f"{m}: {v:+.4f}" for m, v in meth_scores.items())
     story.append(body(
-        "<b>Representation unchanged.</b> <b>Method and k chosen with training/validation data only</b> — "
-        "neither used test labels anywhere in fitting or selection. <b>Method</b> among "
-        "{MiniBatchKMeans, full KMeans (n_init=10), diagonal-covariance GMM}, scored by silhouette on a fixed "
-        f"1,500-sample validation subsample (seed {SEED}): {meth_txt} → choose "
-        f"<b>{q4c['method']}</b>. <b>k</b> in {{10, 20}} on the same subsample: {sil_txt} → "
-        f"choose <b>k = {q4c['k_chosen_by_validation']}</b>. "
-        "The final fit uses all 45,000 train representations (8 initializations for MiniBatchKMeans); test representations are assigned without "
-        "labels; test labels used only afterwards, once, for evaluation."))
+        "<b>Clustering selection.</b> We use the same encoder as the SVM and fit a separate scaler on the "
+        "45,000 training representations. On a fixed 1,500-point validation subsample "
+        f"(seed {SEED}), MiniBatchKMeans first selects <b>k = {q4c['k_chosen_by_validation']}</b> by "
+        f"silhouette ({sil_txt}). At that k, the method comparison gives {meth_txt}, so we choose "
+        f"<b>{q4c['method']}</b>. MiniBatchKMeans uses four initializations during selection and eight "
+        "in the final fit on all 45,000 training representations. Test labels are used after cluster assignment."))
     story.append(simple_table(
         [["metric (official test, after assignment)", "value"],
          ["ARI", f"{q4c['test_ARI']:.4f}"],
          ["NMI", f"{q4c['test_NMI']:.4f}"],
          ["AMI", f"{q4c['test_AMI']:.4f}"],
-         ["cluster purity", f"{q4c['test_cluster_purity']:.4f}"],
-         ["acc. after majority cluster-&gt;class map", PCT(q4c["test_acc_after_majority_mapping"])],
+         ["cluster purity", PCT(q4c["test_cluster_purity"])],
+         ["accuracy after majority mapping", PCT(q4c["test_acc_after_majority_mapping"])],
          ["SVM test accuracy (reference)", PCT(q4c["svm_test_acc"])]],
         col_widths=[2.2*inch, 0.8*inch], fontsize=6.0))
     story.append(caption("<b>Table 12.</b> Q4(c) — test-set clustering evaluation (labels used only after "
@@ -595,13 +594,14 @@ def build(commit_hash, repo_url, output):
         f"<b>Quantitative disagreement.</b> For automobile, SVM recall is {PCT(_svm_map['automobile'])}, "
         f"while test-majority-mapped cluster recall is {PCT(_cl_map['automobile'])}. For airplane the "
         f"corresponding numbers are {PCT(_svm_map['airplane'])} and {PCT(_cl_map['airplane'])}. "
-        "The contingency table shows how mixed-class clusters and shared majority labels can yield these "
-        "differences. Majority mapping uses test labels for descriptive evaluation, and its accuracy "
+        f"Only {sum(bool(sum(row)) for row in cont)} of the {len(cont)} clusters receive test points. "
+        "The contingency table shows how mixed-class clusters can yield these differences. Majority mapping "
+        "uses test labels for descriptive evaluation, and its accuracy "
         "equals purity. ARI and NMI compare assignments with labels without that mapping."))
-    _pc_rows = [[c, PCT(_svm_map[c]), PCT(_cl_map[c]), f"{100 * (_svm_map[c] - _cl_map[c]):+.1f}"]
+    _pc_rows = [[c, PCT(_svm_map[c]), PCT(_cl_map[c]), f"{100 * (_svm_map[c] - _cl_map[c]):+.2f}"]
                 for c in _cl_map]
     story.append(simple_table(
-        [["class", "SVM recall", "KMeans recall", "Δ (pts)"]] + _pc_rows,
+        [["class", "SVM recall", "cluster recall", "Δ (pts)"]] + _pc_rows,
         col_widths=[1.15*inch, 0.72*inch, 0.78*inch, 0.62*inch], fontsize=5.8))
     story.append(caption("<b>Table 14.</b> Q4(c) — per-class test recall: supervised SVM vs label-free MiniBatchKMeans "
                          "(majority-mapped clusters). Positive Δ favours the SVM."))
@@ -625,7 +625,7 @@ def build(commit_hash, repo_url, output):
     reuse_rows = [
         ["q2-cnn", "Q2(a)", "Q3(b) fixed classifier; Q2(c) analysis"],
         ["validation-selected clean AE", "Q3(a)", "Q3(b–c); Q4 representation"],
-        ["pixel permutation (split file)", "Q2(b)", "Q2(b) test evaluation only"],
+        ["pixel permutation (split file)", "Q2(b)", "Q2(b) train, val and test"],
         ["selected SVM (Q4a)", "Q4(a)", "Q4(b) hard-pair inspection; Q4(c) reference"],
         ["fixed stratified 9k SVM subset", "Q4(a)", "every SVM comparison, incl. Q4(b)"],
     ]
