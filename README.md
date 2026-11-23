@@ -88,16 +88,4 @@ classifier in Q3(b). Q3(a)'s encoders are frozen for Q3(c); its best
 validation-MSE autoencoder supplies the Q3(b) baseline and the fixed Q4
 representation. Q4(c) compares its assignments with the selected Q4(a) SVM.
 
-## Push the submission repository
 
-Create an empty GitHub repository at the URL printed on page 1. The supplied
-Git repository can be opened directly in GitHub Desktop or pushed from its
-root. If the checkout has no remote, configure it before pushing:
-
-```bash
-git remote add origin https://github.com/devinder-research/ml-assignment3.git
-git push -u origin main
-```
-
-Submit the standalone PDF and the repository URL. Keep the commit printed
-in the PDF reachable from the submitted branch.
